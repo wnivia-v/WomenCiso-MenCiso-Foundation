@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowRight, ArrowLeft, MapPin, User, Flame, Camera, X, LocateFixed, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowLeft, MapPin, User, Flame, Camera, X, LocateFixed, Loader2, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { calcularGravedad } from "@/lib/utils";
+import { OCRDocumentoTriage } from "@/components/ocr-triage";
 
 const zonasCoporales = [
   "cabeza", "cara", "cuello", "torso_anterior", "torso_posterior",
@@ -350,12 +351,79 @@ export default function NuevaEmergenciaPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input
-              label="Nombre del paciente"
-              placeholder="Nombre completo"
-              value={form.nombrePaciente}
-              onChange={(e) => updateForm("nombrePaciente", e.target.value)}
+            {/* OCR para llenado rápido desde documento */}
+            <OCRDocumentoTriage
+              onDatosExtraidos={(datos) => {
+                if (datos.nombre) {
+                  const nombreCompleto = [datos.nombre, datos.apellidoPaterno, datos.apellidoMaterno].filter(Boolean).join(" ");
+                  updateForm("nombrePaciente", nombreCompleto);
+                }
+                if (datos.genero) updateForm("generoPaciente", datos.genero);
+                if (datos.fechaNacimiento) {
+                  // Calcular edad a partir de fecha de nacimiento
+                  const nacimiento = new Date(datos.fechaNacimiento);
+                  const hoy = new Date();
+                  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+                  const mes = hoy.getMonth() - nacimiento.getMonth();
+                  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+                  updateForm("edadPaciente", String(Math.max(0, edad)));
+                }
+              }}
             />
+
+            {/* Botón NN (paciente sin identificación) */}
+            {!form.nombrePaciente && (
+              <button
+                type="button"
+                onClick={() => {
+                  const ahora = new Date();
+                  const anio = ahora.getFullYear();
+                  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+                  const dia = String(ahora.getDate()).padStart(2, "0");
+                  const hora = String(ahora.getHours()).padStart(2, "0");
+                  const min = String(ahora.getMinutes()).padStart(2, "0");
+                  const idNN = `NN-${anio}${mes}${dia}-${hora}${min}`;
+                  updateForm("nombrePaciente", idNN);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-navy-300 bg-navy-50/50 px-4 py-3 text-left transition-all hover:border-navy-400 hover:bg-navy-100 active:scale-[0.98]"
+              >
+                <UserX className="h-5 w-5 text-navy-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-navy-700">Paciente sin identificación (NN)</p>
+                  <p className="text-[10px] text-navy-500">Asigna ID temporal con fecha y hora. Se coteja después con documentos o biometría.</p>
+                </div>
+              </button>
+            )}
+
+            {/* Si es NN, mostrar el badge */}
+            {form.nombrePaciente.startsWith("NN-") && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
+                <UserX className="h-4 w-4 text-amber-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-amber-800">Paciente No Identificado</p>
+                  <p className="font-mono text-sm font-bold text-amber-900">{form.nombrePaciente}</p>
+                  <p className="text-[10px] text-amber-600">Se cotejarán datos cuando estén disponibles (documento, huella, familiar).</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateForm("nombrePaciente", "")}
+                  className="shrink-0 rounded-md p-1 text-amber-600 hover:bg-amber-100"
+                  aria-label="Quitar identificación NN"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Campos manuales (si no es NN, o para agregar edad/género al NN) */}
+            {!form.nombrePaciente.startsWith("NN-") && (
+              <Input
+                label="Nombre del paciente"
+                placeholder="Nombre completo"
+                value={form.nombrePaciente}
+                onChange={(e) => updateForm("nombrePaciente", e.target.value)}
+              />
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Edad (años)"
