@@ -31,38 +31,8 @@ interface OCRDocumentoTriageProps {
  * - Texto enfocado en la urgencia ("No hay tiempo para escribir")
  * - Aplica los datos automáticamente sin paso de confirmación intermedio
  *   (en una emergencia, cada clic extra son segundos)
- * - Mantiene el fallback a datos demo si Textract no está disponible
+ * - El servidor decide si usar Textract real o datos demo según el entorno
  */
-
-const DATOS_SIMULADOS: DatosExtraidos[] = [
-  {
-    nombre: "SOFIA",
-    apellidoPaterno: "GARCIA",
-    apellidoMaterno: "LOPEZ",
-    fechaNacimiento: "2018-05-12",
-    genero: "FEMENINO",
-    curp: "GALS180512MDFRPF04",
-    estado: "Ciudad de México",
-  },
-  {
-    nombre: "DIEGO",
-    apellidoPaterno: "MARTINEZ",
-    apellidoMaterno: "REYES",
-    fechaNacimiento: "2015-11-03",
-    genero: "MASCULINO",
-    curp: "MARD151103HMCRGY09",
-    estado: "Estado de México",
-  },
-  {
-    nombre: "VALENTINA",
-    apellidoPaterno: "HERNANDEZ",
-    apellidoMaterno: "CRUZ",
-    fechaNacimiento: "2020-02-28",
-    genero: "FEMENINO",
-    curp: "HECV200228MDFRNL07",
-    estado: "Jalisco",
-  },
-];
 
 export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocumentoTriageProps) {
   const [estado, setEstado] = useState<"idle" | "procesando" | "listo" | "error">("idle");
@@ -92,7 +62,13 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
         if (response.ok) {
           const resultado = await response.json();
           if (resultado.success && resultado.datos) {
-            const datos: DatosExtraidos = resultado.datos;
+            const datos: DatosExtraidos = {
+              ...resultado.datos,
+              // Marcar si es modo demo para que el UI lo indique
+              tipoDocumento: resultado.mode === "demo"
+                ? `${resultado.datos.tipoDocumento || "Documento"} (demo)`
+                : resultado.datos.tipoDocumento,
+            };
             setDatosEncontrados(datos);
             onDatosExtraidos(datos);
 
@@ -119,16 +95,10 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
             return;
           }
         }
-        // Fallback
-        const datos = DATOS_SIMULADOS[Math.floor(Math.random() * DATOS_SIMULADOS.length)];
-        setDatosEncontrados(datos);
-        onDatosExtraidos(datos);
-        setEstado("listo");
+        // Si la respuesta no fue ok
+        setEstado("error");
       } catch {
-        const datos = DATOS_SIMULADOS[Math.floor(Math.random() * DATOS_SIMULADOS.length)];
-        setDatosEncontrados(datos);
-        onDatosExtraidos(datos);
-        setEstado("listo");
+        setEstado("error");
       }
     };
     reader.readAsDataURL(archivo);
@@ -137,6 +107,7 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
   const resetear = () => {
     setEstado("idle");
     setDatosEncontrados(null);
+    setRostroDetectado(false);
   };
 
   return (
@@ -217,6 +188,24 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
             aria-label="Leer otro documento"
           >
             <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {estado === "error" && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <X className="h-4 w-4 text-red-500" />
+            <p className="text-xs text-red-700 dark:text-red-300">
+              No se pudo procesar. Intenta otra foto o escribe los datos manualmente.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={resetear}
+            className="shrink-0 rounded-md border border-navy-200 px-2 py-1 text-[10px] font-medium text-navy-600 hover:bg-navy-50 dark:border-navy-700 dark:text-navy-300"
+          >
+            Reintentar
           </button>
         </div>
       )}

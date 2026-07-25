@@ -49,27 +49,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // En entorno local sin rol de IAM, usar modo demo
-    const esEntornoLocal = process.env.NODE_ENV === "development" && !process.env.AWS_EXECUTION_ENV;
-
-    if (esEntornoLocal) {
-      return NextResponse.json({
-        success: true,
-        mode: "demo",
-        datos: obtenerDatosDemo(),
-        textoCompleto: "Modo demo local — en Amplify se usa Amazon Textract con IAM Role",
+    // Intentar siempre con Textract primero.
+    // Si falla por credenciales (entorno local sin IAM Role), usar datos demo.
+    try {
+      // Crear cliente de Textract
+      const textractClient = new TextractClient({
+        region: process.env.AWS_REGION_TEXTRACT || "us-east-1",
       });
-    }
 
-    // Crear cliente de Textract
-    const textractClient = new TextractClient({
-      region: process.env.AWS_REGION_TEXTRACT || "us-east-1",
-    });
-
-    // Intentar primero con AnalyzeDocument (detecta formularios y tablas)
-    // Si falla, caer a DetectDocumentText (solo texto)
-    let lineas: string[] = [];
-    let palabras: { text: string; confidence: number; geometry?: unknown }[] = [];
+      // Intentar primero con AnalyzeDocument (detecta formularios y tablas)
+      // Si falla, caer a DetectDocumentText (solo texto)
+      let lineas: string[] = [];
+      let palabras: { text: string; confidence: number; geometry?: unknown }[] = [];
 
     try {
       const analyzeCommand = new AnalyzeDocumentCommand({
@@ -183,6 +174,18 @@ export async function POST(request: NextRequest) {
         ? Math.round(palabras.reduce((sum, p) => sum + p.confidence, 0) / palabras.length)
         : 0,
     });
+    } catch (awsError) {
+      // Si Textract/Rekognition fallan (credenciales no disponibles, entorno local, etc.)
+      // Caer a modo demo para que la app siga funcionando
+      console.error("AWS no disponible, usando modo demo:", awsError);
+      return NextResponse.json({
+        success: true,
+        mode: "demo",
+        datos: obtenerDatosDemo(),
+        fotoRostro: { detectado: false },
+        textoCompleto: "Modo demo — AWS Textract/Rekognition no disponible en este entorno",
+      });
+    }
   } catch (error) {
     console.error("Error en OCR:", error);
     return NextResponse.json(
