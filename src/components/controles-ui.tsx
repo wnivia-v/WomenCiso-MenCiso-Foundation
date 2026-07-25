@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Moon, Sun, Globe, Check } from "lucide-react";
+import { Moon, Sun, Check } from "lucide-react";
 import { useTema } from "@/lib/theme";
 import { useI18n, type Idioma } from "@/lib/i18n";
 
@@ -50,13 +50,12 @@ export function ControlesUI({ variante = "oscuro" }: ControlesUIProps) {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setMenuAbierto(!menuAbierto)}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all active:scale-95 ${estiloBoton}`}
+          className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-all active:scale-95 ${estiloBoton}`}
           aria-label="Cambiar idioma"
           aria-expanded={menuAbierto}
           aria-haspopup="listbox"
         >
-          <Globe className="h-3.5 w-3.5" />
-          <span className="font-semibold">{idiomaActual.bandera} {idiomaActual.value.toUpperCase()}</span>
+          <span className="text-sm leading-none">{idiomaActual.bandera}</span>
         </button>
 
         {/* Menú desplegable */}
