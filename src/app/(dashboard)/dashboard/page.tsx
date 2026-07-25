@@ -4,13 +4,10 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { IndicadorOrigen } from "@/components/indicador-origen";
+import { obtenerEstadisticas, obtenerEmergencias, etiquetaCausa } from "@/lib/datos";
 
-const stats = [
-  { name: "Pacientes Activos", value: "24", change: "+3 este mes", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-  { name: "Emergencias Hoy", value: "2", change: "1 en triage", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
-  { name: "Hospitales Conectados", value: "8", change: "5 con camas", icon: Building2, color: "text-green-600", bg: "bg-green-50" },
-  { name: "En Seguimiento", value: "18", change: "4 próxima cita", icon: Activity, color: "text-gold-500", bg: "bg-gold-50" },
-];
+export const dynamic = "force-dynamic";
 
 // Datos para gráfica de barras (pacientes por mes)
 const pacientesPorMes = [
@@ -23,13 +20,20 @@ const pacientesPorMes = [
   { mes: "Jul", total: 24 },
 ];
 
-// Datos para gráfica de gravedad (pie chart simulado con barras horizontales)
-const gravedadDistribucion = [
-  { nivel: "Leve", cantidad: 45, color: "bg-green-500", porcentaje: 31 },
-  { nivel: "Moderado", cantidad: 52, color: "bg-yellow-500", porcentaje: 36 },
-  { nivel: "Grave", cantidad: 35, color: "bg-orange-500", porcentaje: 24 },
-  { nivel: "Crítico", cantidad: 14, color: "bg-red-500", porcentaje: 9 },
-];
+/** Colores por nivel de gravedad, consistentes con el resto del sistema. */
+const COLOR_GRAVEDAD: Record<string, string> = {
+  LEVE: "bg-green-500",
+  MODERADO: "bg-yellow-500",
+  GRAVE: "bg-orange-500",
+  CRITICO: "bg-red-500",
+};
+
+const ETIQUETA_GRAVEDAD: Record<string, string> = {
+  LEVE: "Leve",
+  MODERADO: "Moderado",
+  GRAVE: "Grave",
+  CRITICO: "Crítico",
+};
 
 // KPIs de rendimiento
 const kpis = [
@@ -39,11 +43,23 @@ const kpis = [
   { nombre: "Satisfacción familiar", valor: "4.7/5", meta: "> 4.5", cumple: true },
 ];
 
-const emergenciasRecientes = [
-  { id: "EMG-001", paciente: "María G., 4 años", tipo: "Escaldadura", gravedad: "GRAVE", estado: "EN_TRIAGE", tiempo: "Hace 15 min" },
-  { id: "EMG-002", paciente: "Carlos R., 7 años", tipo: "Fuego directo", gravedad: "MODERADO", estado: "CANALIZADA", tiempo: "Hace 1 hora" },
-  { id: "EMG-003", paciente: "Ana L., 12 años", tipo: "Química", gravedad: "CRITICO", estado: "EN_TRANSITO", tiempo: "Hace 2 horas" },
-];
+/** Convierte una fecha ISO en texto relativo ("Hace 15 min"). */
+function tiempoRelativo(iso: string): string {
+  const minutos = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutos < 1) return "Ahora mismo";
+  if (minutos < 60) return `Hace ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `Hace ${horas} ${horas === 1 ? "hora" : "horas"}`;
+  const dias = Math.floor(horas / 24);
+  return `Hace ${dias} ${dias === 1 ? "día" : "días"}`;
+}
+
+/** Abrevia "María García López" como "María G." para las listas compactas. */
+function nombreCompacto(nombreCompleto: string): string {
+  const partes = nombreCompleto.trim().split(/\s+/);
+  if (partes.length < 2) return nombreCompleto;
+  return `${partes[0]} ${partes[1].charAt(0)}.`;
+}
 
 const proximasCitas = [
   { paciente: "Diego M., 9 años", tipo: "Curación", fecha: "Hoy 14:00", hospital: "Hospital Civil" },
@@ -69,14 +85,68 @@ function getEstadoLabel(estado: string) {
   return labels[estado] || estado;
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Las dos consultas son independientes, así que van en paralelo.
+  const [resEstadisticas, resEmergencias] = await Promise.all([
+    obtenerEstadisticas(),
+    obtenerEmergencias(),
+  ]);
+
+  const est = resEstadisticas.datos;
+  const emergenciasRecientes = resEmergencias.datos.slice(0, 3);
+
   const maxPacientes = Math.max(...pacientesPorMes.map((m) => m.total));
+
+  // El total de casos clasificados sale de la suma real por nivel, no de una
+  // constante: si se escribe a mano, los porcentajes dejan de cuadrar en cuanto
+  // entra una emergencia nueva.
+  const totalClasificados = est.porGravedad.reduce((sum, g) => sum + g.cantidad, 0);
+
+  const stats = [
+    {
+      name: "Pacientes Registrados",
+      value: String(est.pacientesTotales),
+      change: `${est.emergenciasActivas} con caso activo`,
+      icon: Users,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      name: "Emergencias Activas",
+      value: String(est.emergenciasActivas),
+      change: "sin cerrar",
+      icon: AlertTriangle,
+      color: "text-red-600",
+      bg: "bg-red-50",
+    },
+    {
+      name: "Hospitales Conectados",
+      value: String(est.hospitalesActivos),
+      change: `${est.hospitalesConCamas} con camas`,
+      icon: Building2,
+      color: "text-green-600",
+      bg: "bg-green-50",
+    },
+    {
+      name: "Camas Disponibles",
+      value: String(est.camasDisponibles),
+      change: "en toda la red",
+      icon: Activity,
+      color: "text-gold-500",
+      bg: "bg-gold-50",
+    },
+  ];
 
   return (
     <div className="space-y-5 md:space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-navy-800 md:text-2xl">Panel de Control</h1>
-        <p className="text-sm text-navy-500">Vista general — WomenCiso y MenCiso Foundation</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold text-navy-800 dark:text-white md:text-2xl">
+            Panel de Control
+          </h1>
+          <p className="text-sm text-navy-500">Vista general — WomenCiso y MenCiso Foundation</p>
+        </div>
+        <IndicadorOrigen origen={resEstadisticas.origen} error={resEstadisticas.error} />
       </div>
 
       {/* Contador de impacto en tiempo real */}
@@ -171,23 +241,40 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {gravedadDistribucion.map((g) => (
-                <div key={g.nivel} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-navy-700">{g.nivel}</span>
-                    <span className="text-sm font-semibold text-navy-800">{g.cantidad} ({g.porcentaje}%)</span>
-                  </div>
-                  <div className="h-3 w-full rounded-full bg-gray-100">
-                    <div
-                      className={`h-full rounded-full ${g.color} transition-all duration-700`}
-                      style={{ width: `${g.porcentaje}%` }}
-                    />
-                  </div>
+            {totalClasificados === 0 ? (
+              <p className="py-6 text-center text-sm text-navy-500">
+                Aún no hay casos clasificados.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {est.porGravedad.map((g) => {
+                    const porcentaje = Math.round((g.cantidad / totalClasificados) * 100);
+                    return (
+                      <div key={g.nivel} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-navy-700 dark:text-navy-200">
+                            {ETIQUETA_GRAVEDAD[g.nivel] || g.nivel}
+                          </span>
+                          <span className="text-sm font-semibold text-navy-800 dark:text-white">
+                            {g.cantidad} ({porcentaje}%)
+                          </span>
+                        </div>
+                        <div className="h-3 w-full rounded-full bg-gray-100 dark:bg-navy-800">
+                          <div
+                            className={`h-full rounded-full ${COLOR_GRAVEDAD[g.nivel] || "bg-navy-400"} transition-all duration-700`}
+                            style={{ width: `${porcentaje}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-navy-500">Total de casos clasificados: <strong>146</strong></p>
+                <p className="mt-3 text-xs text-navy-500">
+                  Total de casos clasificados: <strong>{totalClasificados}</strong>
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -223,24 +310,38 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {emergenciasRecientes.map((emg) => (
-                <div key={emg.id} className="rounded-lg border border-navy-100 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-sm font-medium text-navy-800">{emg.paciente}</span>
-                        <Badge variant={getGravedadVariant(emg.gravedad)}>{emg.gravedad}</Badge>
+            {emergenciasRecientes.length === 0 ? (
+              <p className="py-6 text-center text-sm text-navy-500">
+                No hay emergencias registradas.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {emergenciasRecientes.map((emg) => (
+                  <div
+                    key={emg.id}
+                    className="rounded-lg border border-navy-100 p-3 dark:border-navy-800"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-medium text-navy-800 dark:text-white">
+                            {nombreCompacto(emg.paciente)}, {emg.edad} años
+                          </span>
+                          <Badge variant={getGravedadVariant(emg.gravedad)}>{emg.gravedad}</Badge>
+                        </div>
+                        <p className="mt-0.5 text-xs text-navy-500">
+                          {etiquetaCausa(emg.causa)} — {getEstadoLabel(emg.estado)}
+                        </p>
                       </div>
-                      <p className="mt-0.5 text-xs text-navy-500">{emg.tipo} — {getEstadoLabel(emg.estado)}</p>
+                      <span className="flex shrink-0 items-center gap-1 text-xs text-navy-400">
+                        <Clock className="h-3 w-3" />
+                        {tiempoRelativo(emg.fecha)}
+                      </span>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 text-xs text-navy-400">
-                      <Clock className="h-3 w-3" />{emg.tiempo}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
