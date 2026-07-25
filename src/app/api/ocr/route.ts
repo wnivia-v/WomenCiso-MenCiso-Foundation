@@ -39,24 +39,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar que las credenciales AWS estén configuradas
-    if (!process.env.AWS_ACCESS_KEY_ID_TEXTRACT || !process.env.AWS_SECRET_ACCESS_KEY_TEXTRACT) {
-      // Fallback: modo demo si no hay credenciales configuradas
+    // En entorno local sin rol de IAM, usar modo demo
+    // En Amplify, el rol de servicio proporciona credenciales automáticamente
+    const esEntornoLocal = process.env.NODE_ENV === "development" && !process.env.AWS_EXECUTION_ENV;
+
+    if (esEntornoLocal) {
       return NextResponse.json({
         success: true,
         mode: "demo",
         datos: obtenerDatosDemo(),
-        textoCompleto: "Modo demo — configure AWS_ACCESS_KEY_ID_TEXTRACT y AWS_SECRET_ACCESS_KEY_TEXTRACT para OCR real",
+        textoCompleto: "Modo demo local — en Amplify se usa Amazon Textract con IAM Role",
       });
     }
 
-    // Crear cliente de Textract
+    // Crear cliente de Textract usando credenciales del entorno (IAM Role de Amplify)
+    // No se necesitan claves de acceso — el rol de servicio de Amplify
+    // tiene adjuntada la política AmazonTextractFullAccess
     const textractClient = new TextractClient({
       region: process.env.AWS_REGION_TEXTRACT || "us-east-1",
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID_TEXTRACT,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_TEXTRACT,
-      },
     });
 
     // Llamar a Textract
