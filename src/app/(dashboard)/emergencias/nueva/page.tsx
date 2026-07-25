@@ -361,12 +361,23 @@ export default function NuevaEmergenciaPage() {
                 if (datos.genero) updateForm("generoPaciente", datos.genero);
                 if (datos.fechaNacimiento) {
                   // Calcular edad a partir de fecha de nacimiento
-                  const nacimiento = new Date(datos.fechaNacimiento);
-                  const hoy = new Date();
-                  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-                  const mes = hoy.getMonth() - nacimiento.getMonth();
-                  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
-                  updateForm("edadPaciente", String(Math.max(0, edad)));
+                  const partesFecha = datos.fechaNacimiento.split("-");
+                  const anio = parseInt(partesFecha[0]);
+                  const mes = parseInt(partesFecha[1]) - 1;
+                  const dia = parseInt(partesFecha[2]);
+                  if (anio && !isNaN(mes) && dia) {
+                    const nacimiento = new Date(anio, mes, dia);
+                    const hoy = new Date();
+                    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+                    const diffMes = hoy.getMonth() - nacimiento.getMonth();
+                    if (diffMes < 0 || (diffMes === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+                    // Solo aplicar si la edad es razonable para pediatría (0-18)
+                    if (edad >= 0 && edad <= 18) {
+                      updateForm("edadPaciente", String(edad));
+                    }
+                    // Si la edad es mayor a 18, no se aplica automáticamente
+                    // (podría ser el padre/tutor en el documento, no el paciente)
+                  }
                 }
               }}
             />
@@ -385,12 +396,12 @@ export default function NuevaEmergenciaPage() {
                   const idNN = `NN-${anio}${mes}${dia}-${hora}${min}`;
                   updateForm("nombrePaciente", idNN);
                 }}
-                className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-navy-300 bg-navy-50/50 px-4 py-3 text-left transition-all hover:border-navy-400 hover:bg-navy-100 active:scale-[0.98]"
+                className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 px-4 py-3 text-left transition-all hover:border-amber-500 hover:bg-amber-100 active:scale-[0.98] dark:border-amber-500/50 dark:bg-amber-500/10 dark:hover:bg-amber-500/20"
               >
-                <UserX className="h-5 w-5 text-navy-500 shrink-0" />
+                <UserX className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-navy-700">Paciente sin identificación (NN)</p>
-                  <p className="text-[10px] text-navy-500">Asigna ID temporal con fecha y hora. Se coteja después con documentos o biometría.</p>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Paciente sin identificación (NN)</p>
+                  <p className="text-[10px] text-amber-700 dark:text-amber-300">Asigna ID temporal con fecha y hora. Se coteja después con documentos o biometría.</p>
                 </div>
               </button>
             )}
@@ -786,9 +797,9 @@ export default function NuevaEmergenciaPage() {
           )}
 
           {/* Checklist de Primeros Auxilios — qué hacer mientras llega ayuda */}
-          <Card className="border-blue-200 bg-blue-50/30">
+          <Card className="border-blue-200 bg-blue-50/30 dark:border-blue-500/30 dark:bg-blue-500/10">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
                 <AlertTriangle className="h-4 w-4" />
                 Mientras llega la ayuda — Primeros Auxilios
               </CardTitle>
@@ -796,35 +807,35 @@ export default function NuevaEmergenciaPage() {
             <CardContent>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">1</span>
-                  <p className="text-sm text-navy-700"><strong>Enfriar la zona</strong> — agua corriente limpia (NO hielo) durante 10-20 minutos.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">1</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">Enfriar la zona</strong> — agua corriente limpia (NO hielo) durante 10-20 minutos.</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">2</span>
-                  <p className="text-sm text-navy-700"><strong>Retirar ropa y accesorios</strong> — solo si NO están pegados a la piel.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">2</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">Retirar ropa y accesorios</strong> — solo si NO están pegados a la piel.</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">3</span>
-                  <p className="text-sm text-navy-700"><strong>Cubrir con tela limpia</strong> — sábana o gasa húmeda, sin apretar.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">3</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">Cubrir con tela limpia</strong> — sábana o gasa húmeda, sin apretar.</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">4</span>
-                  <p className="text-sm text-navy-700"><strong>NO aplicar</strong> — pasta de dientes, mantequilla, aceite, remedios caseros.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">4</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">NO aplicar</strong> — pasta de dientes, mantequilla, aceite, remedios caseros.</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">5</span>
-                  <p className="text-sm text-navy-700"><strong>NO reventar ampollas</strong> — protegen la piel y previenen infección.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">5</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">NO reventar ampollas</strong> — protegen la piel y previenen infección.</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">6</span>
-                  <p className="text-sm text-navy-700"><strong>Elevar la zona</strong> — si es posible, mantener por encima del corazón para reducir hinchazón.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">6</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">Elevar la zona</strong> — si es posible, mantener por encima del corazón para reducir hinchazón.</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800">7</span>
-                  <p className="text-sm text-navy-700"><strong>Mantener calmado al niño/a</strong> — hablarle, no dejarlo solo.</p>
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-200 text-[10px] font-bold text-blue-800 dark:bg-blue-500/30 dark:text-blue-200">7</span>
+                  <p className="text-sm text-navy-700 dark:text-navy-200"><strong className="dark:text-white">Mantener calmado al niño/a</strong> — hablarle, no dejarlo solo.</p>
                 </div>
               </div>
-              <p className="mt-3 rounded-lg bg-red-100 p-2 text-xs font-medium text-red-700">
+              <p className="mt-3 rounded-lg bg-red-100 p-2 text-xs font-medium text-red-700 dark:bg-red-500/20 dark:text-red-300">
                 ⚠️ Si hay dificultad para respirar, quemaduras en cara/cuello, o el niño pierde consciencia: llamar al 911 inmediatamente.
               </p>
             </CardContent>
