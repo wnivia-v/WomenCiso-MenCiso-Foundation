@@ -114,7 +114,7 @@ export function OCRDocumentoTriage({ onDatosExtraidos }: OCRDocumentoTriageProps
   };
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-500/30 dark:bg-blue-500/10">
+    <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-3 dark:border-blue-500/40 dark:bg-blue-500/10">
       <input
         ref={fileInputRef}
         type="file"
@@ -138,7 +138,7 @@ export function OCRDocumentoTriage({ onDatosExtraidos }: OCRDocumentoTriageProps
               <Zap className="mr-1 inline h-3.5 w-3.5 text-blue-500" />
               Identificar con foto de documento
             </p>
-            <p className="text-[10px] text-navy-500 dark:text-navy-400">
+            <p className="text-[10px] text-blue-700 dark:text-navy-400">
               CURP, acta o credencial — extrae nombre y edad en segundos. Powered by Amazon Textract.
             </p>
           </div>
