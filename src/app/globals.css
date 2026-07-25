@@ -144,124 +144,150 @@ input, select, textarea {
 
 
 /* ===== MODO OSCURO ===== */
-/* Se activa cuando el ThemeProvider agrega class="dark" al <html> */
+/* Se activa cuando el ThemeProvider agrega class="dark" al <html>
+   Criterio: se oscurecen superficies neutras (blancos, grises, navy claros) y se
+   aclaran los textos. Los colores de acento que comunican urgencia (rojo del
+   triage, naranja de gravedad, verde de disponibilidad) se preservan intactos
+   porque su función es semántica, no estética. */
 
 .dark {
-  --background: #0f1419;
-  --foreground: #e7e9ea;
+  --background: #10141c;
+  --foreground: #e8eaed;
 }
 
 .dark body {
-  background: #0f1419;
-  color: #e7e9ea;
+  background: #10141c;
+  color: #e8eaed;
 }
 
-/* Contenedores y cards */
-.dark .bg-white {
-  background-color: #1a2332 !important;
+/* --- Superficies --- */
+/* :not() excluye elementos con color de acento explícito */
+.dark .bg-white:not(.bg-red-600):not(.bg-red-700):not(.bg-red-800) {
+  background-color: #1a212e;
 }
 
-.dark .bg-gray-50 {
-  background-color: #0f1419 !important;
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #10141c;
 }
 
-.dark .bg-navy-50 {
-  background-color: #1a2332 !important;
+.dark .bg-navy-50,
+.dark .bg-navy-50\/50,
+.dark .bg-navy-50\/30 {
+  background-color: #1e2635;
 }
 
-.dark .bg-navy-50\/50 {
-  background-color: rgba(26, 35, 50, 0.5) !important;
+.dark .bg-white\/95 {
+  background-color: rgba(26, 33, 46, 0.95);
 }
 
-/* Textos */
+/* --- Tipografía --- */
+.dark .text-navy-900,
 .dark .text-navy-800 {
-  color: #e7e9ea !important;
+  color: #f1f3f5;
 }
 
 .dark .text-navy-700 {
-  color: #d1d5db !important;
+  color: #dee2e6;
 }
 
 .dark .text-navy-600 {
-  color: #9ca3af !important;
+  color: #ced4da;
 }
 
 .dark .text-navy-500 {
-  color: #6b7280 !important;
+  color: #adb5bd;
 }
 
 .dark .text-navy-400 {
-  color: #9ca3af !important;
+  color: #8b949e;
 }
 
-/* Bordes */
+.dark .text-gray-400,
+.dark .text-gray-500 {
+  color: #8b949e;
+}
+
+/* --- Bordes --- */
 .dark .border-navy-100,
 .dark .border-navy-200,
 .dark .border-gray-100,
 .dark .border-gray-200 {
-  border-color: #2d3748 !important;
+  border-color: #2a3441;
 }
 
-/* Sidebar */
-.dark .bg-white.border-r {
-  background-color: #1a2332 !important;
-  border-color: #2d3748 !important;
+.dark .border-navy-300 {
+  border-color: #3a4757;
 }
 
-/* Header */
-.dark .bg-white\/95 {
-  background-color: rgba(26, 35, 50, 0.95) !important;
-}
-
-.dark .border-b.border-navy-100 {
-  border-color: #2d3748 !important;
-}
-
-/* Inputs */
-.dark input,
+/* --- Formularios --- */
+.dark input:not([type="file"]),
 .dark select,
 .dark textarea {
-  background-color: #1a2332 !important;
-  border-color: #2d3748 !important;
-  color: #e7e9ea !important;
+  background-color: #1e2635;
+  border-color: #2a3441;
+  color: #e8eaed;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #6b7280 !important;
+  color: #6e7681;
 }
 
-/* Cards con borde */
-.dark .rounded-lg.border,
-.dark .rounded-xl.border {
-  border-color: #2d3748 !important;
+.dark select option {
+  background-color: #1e2635;
+  color: #e8eaed;
 }
 
-/* Backgrounds de estadísticas */
-.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
-.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
-.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.1) !important; }
-.dark .bg-gold-50 { background-color: rgba(201, 168, 76, 0.1) !important; }
-.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
-.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.1) !important; }
-.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1) !important; }
+/* --- Fondos tenues de acento (badges, tarjetas de estado) ---
+   Se reducen a un tinte translúcido para que el color siga leyéndose
+   como señal sin encandilar sobre fondo oscuro. */
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+.dark .bg-red-50\/30 { background-color: rgba(239, 68, 68, 0.08); }
+.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.12); }
+.dark .bg-gold-50 { background-color: rgba(201, 168, 76, 0.12); }
+.dark .bg-gold-50\/20,
+.dark .bg-gold-50\/30 { background-color: rgba(201, 168, 76, 0.08); }
+.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12); }
+.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.12); }
+.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.12); }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+.dark .bg-blue-50\/30,
+.dark .bg-blue-50\/50 { background-color: rgba(59, 130, 246, 0.08); }
 
-/* Hover en modo oscuro */
-.dark .hover\:bg-navy-50:hover {
-  background-color: #2d3748 !important;
+/* Textos oscuros sobre esos fondos tenues: se aclaran para mantener contraste */
+.dark .text-red-700, .dark .text-red-800 { color: #fca5a5; }
+.dark .text-green-700, .dark .text-green-800 { color: #86efac; }
+.dark .text-blue-700, .dark .text-blue-800 { color: #93c5fd; }
+.dark .text-orange-700, .dark .text-orange-800 { color: #fdba74; }
+.dark .text-yellow-700, .dark .text-yellow-800 { color: #fde047; }
+.dark .text-purple-700 { color: #d8b4fe; }
+.dark .text-amber-700, .dark .text-amber-800 { color: #fcd34d; }
+.dark .text-gold-700 { color: #e9c96b; }
+
+/* Bordes de acento */
+.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
+.dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3); }
+.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3); }
+.dark .border-gold-200 { border-color: rgba(201, 168, 76, 0.3); }
+.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.3); }
+.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
+
+/* --- Estados hover --- */
+.dark .hover\:bg-navy-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-navy-100:hover {
+  background-color: #2a3441;
 }
 
-.dark .hover\:bg-gray-100:hover {
-  background-color: #2d3748 !important;
+.dark .hover\:bg-gray-200:hover {
+  background-color: #3a4757;
 }
 
-/* Banner de demo */
-.dark .bg-amber-100\/95 {
-  background-color: rgba(40, 35, 20, 0.95) !important;
-}
-
-.dark .text-amber-900 {
-  color: #fbbf24 !important;
+/* --- Barras de progreso / gráficas --- */
+.dark .bg-gray-100.rounded-full {
+  background-color: #2a3441;
 }
 
 /* Scroll */

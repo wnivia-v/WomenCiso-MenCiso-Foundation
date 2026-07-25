@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { Shield, Heart, Clock, Building2, ArrowRight, AlertTriangle, LogIn } from "lucide-react";
 import { useAuth, getRutaInicio } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ControlesUI } from "@/components/controles-ui";
 
 const rolesRapidos = [
   { user: "admin", pass: "admin", label: "Administrador", emoji: "👑", desc: "Todo el sistema" },
@@ -68,19 +70,25 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-navy-800/70" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="relative h-14 w-14 shrink-0 lg:h-16 lg:w-16">
-              <Image
-                src="/logo-womenciso-menciso-icon.png"
-                alt="WomenCiso y MenCiso Foundation"
-                fill
-                className="object-contain"
-                priority
-              />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative h-14 w-14 shrink-0 lg:h-16 lg:w-16">
+                <Image
+                  src="/logo-womenciso-menciso-icon.png"
+                  alt="WomenCiso y MenCiso Foundation"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white lg:text-xl">WomenCiso y MenCiso Foundation</h1>
+                <p className="text-xs text-gold-400 lg:text-sm">Tecnología y ciberseguridad al servicio humanitario</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-white lg:text-xl">WomenCiso y MenCiso Foundation</h1>
-              <p className="text-xs text-gold-400 lg:text-sm">Tecnología y ciberseguridad al servicio humanitario</p>
+            {/* Controles de tema e idioma */}
+            <div className="shrink-0">
+              <ControlesUI variante="claro" />
             </div>
           </div>
 
@@ -228,11 +236,39 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-navy-400">Todos los derechos reservados &copy; 2026 Wladimir Nivia</p>
-            <p className="mt-1 text-[10px] text-navy-400">
-              Desarrollado para el Hackathon IA Masivo Online AWS — codigofacilito.com con Kiro + AWS
-            </p>
+          <div className="mt-6 space-y-2 text-center">
+            {/* Enlaces legales */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[10px]">
+              <Link
+                href="/legal/privacidad"
+                className="text-navy-500 underline decoration-navy-200 underline-offset-2 transition-colors hover:text-navy-700"
+              >
+                Aviso de Privacidad
+              </Link>
+              <span className="text-navy-300">·</span>
+              <Link
+                href="/legal/cookies"
+                className="text-navy-500 underline decoration-navy-200 underline-offset-2 transition-colors hover:text-navy-700"
+              >
+                Cookies
+              </Link>
+              <span className="text-navy-300">·</span>
+              <Link
+                href="/legal/terminos"
+                className="text-navy-500 underline decoration-navy-200 underline-offset-2 transition-colors hover:text-navy-700"
+              >
+                Términos de Uso
+              </Link>
+            </div>
+
+            <div>
+              <p className="text-xs text-navy-400">
+                &copy; 2026 Wladimir Nivia — Todos los derechos reservados
+              </p>
+              <p className="mt-0.5 text-[10px] text-navy-400">
+                Hackathon IA Masivo Online AWS · codigofacilito.com · Kiro + AWS
+              </p>
+            </div>
           </div>
         </div>
       </div>

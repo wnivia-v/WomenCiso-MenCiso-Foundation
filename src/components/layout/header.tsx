@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Bell, Menu, Search, X, AlertTriangle, Clock, CheckCircle2, Moon, Sun, Globe } from "lucide-react";
+import { Bell, Menu, Search, X, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
 import { BotonVoz } from "@/components/lector-voz";
-import { useTema } from "@/lib/theme";
-import { useI18n } from "@/lib/i18n";
+import { ControlesUI } from "@/components/controles-ui";
 
 const notificaciones = [
   {
@@ -57,8 +56,6 @@ interface HeaderProps {
 export function Header({ onMenuToggle }: HeaderProps) {
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
   const noLeidas = notificaciones.filter((n) => !n.leida).length;
-  const { tema, toggleTema } = useTema();
-  const { idioma, toggleIdioma } = useI18n();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-navy-100 bg-white/95 px-4 backdrop-blur-sm md:h-16 md:px-6" role="banner" aria-label="Encabezado del sistema">
@@ -101,28 +98,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <Search className="h-5 w-5" />
         </button>
 
-        {/* Botón de idioma */}
-        <button
-          onClick={toggleIdioma}
-          className="rounded-lg p-2 text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors"
-          aria-label={idioma === "es" ? "Switch to English" : "Cambiar a Español"}
-          title={idioma === "es" ? "English" : "Español"}
-        >
-          <Globe className="h-5 w-5" />
-          <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold text-navy-600 sr-only sm:not-sr-only sm:relative sm:ml-0.5">
-            {idioma === "es" ? "EN" : "ES"}
-          </span>
-        </button>
-
-        {/* Botón de tema claro/oscuro */}
-        <button
-          onClick={toggleTema}
-          className="rounded-lg p-2 text-navy-400 hover:bg-navy-50 hover:text-navy-600 transition-colors"
-          aria-label={tema === "light" ? "Activar modo oscuro" : "Activar modo claro"}
-          title={tema === "light" ? "Modo oscuro" : "Modo claro"}
-        >
-          {tema === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5 text-yellow-500" />}
-        </button>
+        {/* Controles de tema e idioma */}
+        <ControlesUI />
 
         {/* Botón de lectura por voz */}
         <BotonVoz />

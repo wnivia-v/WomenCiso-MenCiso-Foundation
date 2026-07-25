@@ -168,6 +168,35 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
+        {/* Enlaces legales */}
+        <div className="border-t border-gray-100 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px]">
+            <Link
+              href="/legal/privacidad"
+              onClick={onClose}
+              className="text-navy-400 transition-colors hover:text-navy-600 hover:underline"
+            >
+              Privacidad
+            </Link>
+            <span className="text-navy-200">·</span>
+            <Link
+              href="/legal/cookies"
+              onClick={onClose}
+              className="text-navy-400 transition-colors hover:text-navy-600 hover:underline"
+            >
+              Cookies
+            </Link>
+            <span className="text-navy-200">·</span>
+            <Link
+              href="/legal/terminos"
+              onClick={onClose}
+              className="text-navy-400 transition-colors hover:text-navy-600 hover:underline"
+            >
+              Términos
+            </Link>
+          </div>
+        </div>
+
         {/* Footer con usuario */}
         <div className="border-t border-gray-100 p-3">
           <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5">
