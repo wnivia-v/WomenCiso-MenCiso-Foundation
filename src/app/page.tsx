@@ -214,14 +214,19 @@ export default function LoginPage() {
 
           {/* Triage de emergencia - acceso sin login */}
           <div className="mt-4 space-y-2">
+            {/* Acción de emergencia secundaria.
+                Usa la clase `cta-emergencia` en lugar de utilidades bg-red-50 porque
+                en modo oscuro un tinte translúcido la vuelve casi invisible, y este
+                es precisamente el botón que alguien debe encontrar de inmediato y con
+                poca luz. Ver globals.css para el tratamiento en cada tema. */}
             <button
               onClick={() => router.push("/emergencias/nueva")}
-              className="flex w-full items-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-4 py-3 text-left transition-all hover:border-red-400 hover:bg-red-100 active:scale-[0.98]"
+              className="cta-emergencia flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all active:scale-[0.98]"
             >
-              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+              <AlertTriangle className="cta-emergencia-icono h-5 w-5 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-red-800">🚨 Triage Rápido</p>
-                <p className="text-[10px] text-red-600">Formulario completo de 5 pasos — no requiere cuenta</p>
+                <p className="cta-emergencia-titulo text-sm font-semibold">🚨 Triage Rápido</p>
+                <p className="cta-emergencia-detalle text-[10px]">Formulario completo de 5 pasos — no requiere cuenta</p>
               </div>
             </button>
             <button

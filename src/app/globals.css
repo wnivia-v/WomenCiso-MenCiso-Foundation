@@ -307,3 +307,53 @@ input, select, textarea {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #4a5568;
 }
+
+
+/* ===== LLAMADA A LA ACCIÓN DE EMERGENCIA =====
+   Botón de Triage Rápido en la pantalla de acceso.
+
+   Por qué tiene tratamiento propio y no utilidades de Tailwind: el esquema
+   general de modo oscuro convierte los fondos tenues de acento (bg-red-50) en
+   tintes translúcidos al 12%. Para una tarjeta informativa eso está bien, pero
+   este botón es la vía de entrada a una emergencia — alguien tiene que
+   localizarlo en segundos, posiblemente con poca luz o baja visión. Un tinte
+   apagado lo vuelve inencontrable justo cuando más importa.
+
+   En modo claro conserva el aspecto suave para no competir con EMERGENCIA
+   EXTREMA. En modo oscuro pasa a superficie sólida con texto claro, manteniendo
+   la jerarquía pero con contraste suficiente (relación superior a 7:1 sobre el
+   fondo, nivel AAA de WCAG para texto normal). */
+
+.cta-emergencia {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+.cta-emergencia:hover {
+  background-color: #fee2e2;
+  border-color: #f87171;
+}
+.cta-emergencia-icono { color: #dc2626; }
+.cta-emergencia-titulo { color: #991b1b; }
+.cta-emergencia-detalle { color: #dc2626; }
+
+.dark .cta-emergencia {
+  background-color: #6d1a1a;
+  border-color: #ef4444;
+}
+.dark .cta-emergencia:hover {
+  background-color: #852222;
+  border-color: #f87171;
+}
+.dark .cta-emergencia-icono { color: #fca5a5; }
+.dark .cta-emergencia-titulo { color: #ffffff; }
+.dark .cta-emergencia-detalle { color: #fecaca; }
+
+/* Refuerzo general de legibilidad en modo oscuro:
+   los bordes de acento al 30% de opacidad resultaban difusos sobre fondo
+   oscuro. Se elevan para que las tarjetas de estado sigan delimitándose. */
+.dark .border-red-200 { border-color: rgba(248, 113, 113, 0.45); }
+.dark .border-green-200 { border-color: rgba(74, 222, 128, 0.45); }
+.dark .border-blue-200 { border-color: rgba(96, 165, 250, 0.45); }
+.dark .border-gold-200 { border-color: rgba(233, 201, 107, 0.45); }
+.dark .border-amber-200 { border-color: rgba(252, 211, 77, 0.45); }
+.dark .border-purple-200 { border-color: rgba(192, 132, 252, 0.45); }
