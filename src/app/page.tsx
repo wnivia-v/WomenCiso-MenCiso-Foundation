@@ -229,9 +229,9 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-xs text-navy-400">WomenCiso y MenCiso Foundation © 2026</p>
+            <p className="text-xs text-navy-400">Todos los derechos reservados &copy; 2026 Wladimir Nivia</p>
             <p className="mt-1 text-[10px] text-navy-400">
-              Desarrollado por Wladimir Nivia — Ing. Informático
+              Desarrollado para el Hackathon IA Masivo Online AWS — codigofacilito.com con Kiro + AWS
             </p>
           </div>
         </div>

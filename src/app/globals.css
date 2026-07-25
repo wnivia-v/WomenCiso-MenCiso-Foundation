@@ -43,6 +43,8 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: 28px; /* Espacio para el banner del hackathon */
+  padding-bottom: 28px; /* Espacio para el banner de créditos */
 }
 
 /* Smooth scroll en móvil */
