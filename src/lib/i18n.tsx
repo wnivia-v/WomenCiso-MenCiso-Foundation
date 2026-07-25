@@ -6,12 +6,14 @@ export type Idioma = "es" | "en";
 
 interface I18nContextType {
   idioma: Idioma;
+  setIdioma: (idioma: Idioma) => void;
   toggleIdioma: () => void;
   t: (clave: string) => string;
 }
 
 const I18nContext = createContext<I18nContextType>({
   idioma: "es",
+  setIdioma: () => {},
   toggleIdioma: () => {},
   t: (clave) => clave,
 });
@@ -130,6 +132,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const cambiarIdioma = (nuevoIdioma: Idioma) => {
+    setIdioma(nuevoIdioma);
+    try {
+      localStorage.setItem(IDIOMA_STORAGE_KEY, nuevoIdioma);
+    } catch {
+      // no crítico
+    }
+  };
+
   const t = (clave: string): string => {
     const traduccion = traducciones[clave];
     if (!traduccion) return clave;
@@ -137,7 +148,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <I18nContext.Provider value={{ idioma, toggleIdioma, t }}>
+    <I18nContext.Provider value={{ idioma, setIdioma: cambiarIdioma, toggleIdioma, t }}>
       {children}
     </I18nContext.Provider>
   );
