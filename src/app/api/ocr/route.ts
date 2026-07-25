@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TextractClient, AnalyzeDocumentCommand, DetectDocumentTextCommand } from "@aws-sdk/client-textract";
+import { RekognitionClient, DetectFacesCommand } from "@aws-sdk/client-rekognition";
 
 /**
  * API Route: POST /api/ocr
@@ -118,10 +119,64 @@ export async function POST(request: NextRequest) {
     // Extraer datos universales del documento
     const datos = extraerDatosUniversal(lineas, textoCompleto);
 
+    // ===== DETECCIÓN DE ROSTRO (Amazon Rekognition) =====
+    // Si el documento tiene una foto del titular (pasaporte, INE, cédula),
+    // Rekognition la detecta y devolvemos las coordenadas para recortarla.
+    // Esto es clave para pacientes NN: la foto permite reconocimiento posterior.
+    let fotoRostro: { detectado: boolean; boundingBox?: { top: number; left: number; width: number; height: number }; confianza?: number; edad?: { min: number; max: number }; generoDetectado?: string } = { detectado: false };
+
+    try {
+      const rekognitionClient = new RekognitionClient({
+        region: process.env.AWS_REGION_TEXTRACT || "us-east-1",
+      });
+
+      const detectFacesCommand = new DetectFacesCommand({
+        Image: { Bytes: imageBuffer },
+        Attributes: ["ALL"],
+      });
+
+      const facesResponse = await rekognitionClient.send(detectFacesCommand);
+
+      if (facesResponse.FaceDetails && facesResponse.FaceDetails.length > 0) {
+        // Tomar el rostro con mayor confianza (probablemente la foto del documento)
+        const rostro = facesResponse.FaceDetails.reduce((mejor, actual) =>
+          (actual.Confidence || 0) > (mejor.Confidence || 0) ? actual : mejor
+        );
+
+        fotoRostro = {
+          detectado: true,
+          boundingBox: rostro.BoundingBox ? {
+            top: rostro.BoundingBox.Top || 0,
+            left: rostro.BoundingBox.Left || 0,
+            width: rostro.BoundingBox.Width || 0,
+            height: rostro.BoundingBox.Height || 0,
+          } : undefined,
+          confianza: Math.round(rostro.Confidence || 0),
+        };
+
+        // Extraer edad estimada del rostro (útil para pediatría)
+        if (rostro.AgeRange) {
+          fotoRostro.edad = {
+            min: rostro.AgeRange.Low || 0,
+            max: rostro.AgeRange.High || 0,
+          };
+        }
+
+        // Género detectado por el rostro (refuerza o corrige lo leído del texto)
+        if (rostro.Gender && rostro.Gender.Confidence && rostro.Gender.Confidence > 90) {
+          fotoRostro.generoDetectado = rostro.Gender.Value === "Male" ? "MASCULINO" : "FEMENINO";
+        }
+      }
+    } catch {
+      // Rekognition puede fallar si la imagen no contiene un rostro claro
+      // No es un error crítico — simplemente no se detectó rostro
+    }
+
     return NextResponse.json({
       success: true,
       mode: "textract",
       datos,
+      fotoRostro,
       textoCompleto,
       lineasDetectadas: lineas.length,
       confianzaPromedio: palabras.length > 0

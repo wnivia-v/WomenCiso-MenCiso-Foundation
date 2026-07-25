@@ -15,10 +15,12 @@ interface DatosExtraidos {
   numeroDocumento?: string;
   paisEmision?: string;
   nacionalidad?: string;
+  edadEstimada?: string;
 }
 
 interface OCRDocumentoTriageProps {
   onDatosExtraidos: (datos: DatosExtraidos) => void;
+  onFotoRostro?: (imageBase64: string, boundingBox: { top: number; left: number; width: number; height: number }) => void;
 }
 
 /**
@@ -62,9 +64,10 @@ const DATOS_SIMULADOS: DatosExtraidos[] = [
   },
 ];
 
-export function OCRDocumentoTriage({ onDatosExtraidos }: OCRDocumentoTriageProps) {
+export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocumentoTriageProps) {
   const [estado, setEstado] = useState<"idle" | "procesando" | "listo" | "error">("idle");
   const [datosEncontrados, setDatosEncontrados] = useState<DatosExtraidos | null>(null);
+  const [rostroDetectado, setRostroDetectado] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,8 +94,27 @@ export function OCRDocumentoTriage({ onDatosExtraidos }: OCRDocumentoTriageProps
           if (resultado.success && resultado.datos) {
             const datos: DatosExtraidos = resultado.datos;
             setDatosEncontrados(datos);
-            // En triage, aplicar automáticamente para ahorrar tiempo
             onDatosExtraidos(datos);
+
+            // Si se detectó un rostro, notificar al componente padre
+            if (resultado.fotoRostro?.detectado && resultado.fotoRostro.boundingBox && onFotoRostro) {
+              onFotoRostro(imageBase64, resultado.fotoRostro.boundingBox);
+              setRostroDetectado(true);
+            }
+
+            // Si Rekognition estimó la edad y no tenemos fecha, usar esa estimación
+            if (resultado.fotoRostro?.edad && !datos.fechaNacimiento) {
+              const edadPromedio = Math.round((resultado.fotoRostro.edad.min + resultado.fotoRostro.edad.max) / 2);
+              datos.edadEstimada = String(edadPromedio);
+              onDatosExtraidos(datos);
+            }
+
+            // Si Rekognition detectó género y no lo tenemos del texto
+            if (resultado.fotoRostro?.generoDetectado && !datos.genero) {
+              datos.genero = resultado.fotoRostro.generoDetectado;
+              onDatosExtraidos(datos);
+            }
+
             setEstado("listo");
             return;
           }
@@ -179,6 +201,11 @@ export function OCRDocumentoTriage({ onDatosExtraidos }: OCRDocumentoTriageProps
                   Tipo: {datosEncontrados.tipoDocumento}
                   {datosEncontrados.paisEmision && ` · ${datosEncontrados.paisEmision}`}
                   {datosEncontrados.nacionalidad && ` · ${datosEncontrados.nacionalidad}`}
+                  {rostroDetectado && (
+                    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/20 dark:text-green-300">
+                      📸 Rostro detectado
+                    </span>
+                  )}
                 </p>
               )}
             </div>

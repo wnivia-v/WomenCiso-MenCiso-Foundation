@@ -378,7 +378,23 @@ export default function NuevaEmergenciaPage() {
                     // Si la edad es mayor a 18, no se aplica automáticamente
                     // (podría ser el padre/tutor en el documento, no el paciente)
                   }
+                } else if (datos.edadEstimada) {
+                  // Si no hay fecha pero Rekognition estimó la edad por el rostro
+                  const edadEstimada = parseInt(datos.edadEstimada);
+                  if (edadEstimada >= 0 && edadEstimada <= 18) {
+                    updateForm("edadPaciente", datos.edadEstimada);
+                  }
                 }
+              }}
+              onFotoRostro={(imageBase64, boundingBox) => {
+                // Guardar la referencia de la foto del rostro para identificación
+                // Se almacena en el formulario para enviarlo junto con el reporte
+                setForm((prev) => ({
+                  ...prev,
+                  fotos: prev.fotos.length < 6
+                    ? [imageBase64, ...prev.fotos]
+                    : prev.fotos,
+                }));
               }}
             />
 

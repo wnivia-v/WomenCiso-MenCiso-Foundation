@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1095.0",
     "@aws-sdk/client-textract": "^3.1095.0",
     "@prisma/client": "^7.9.0",
     "class-variance-authority": "^0.7.1",
