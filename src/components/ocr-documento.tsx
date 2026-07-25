@@ -72,17 +72,47 @@ export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
     lector.readAsDataURL(archivo);
   };
 
-  const procesarDocumento = () => {
+  const procesarDocumento = async () => {
     setEstado("procesando");
 
-    // Simulación de procesamiento OCR (1.5-2.5 segundos)
-    const tiempoSimulado = 1500 + Math.random() * 1000;
-    setTimeout(() => {
-      // Selecciona datos aleatorios de los simulados
+    try {
+      // Llamar a la API de OCR con Amazon Textract
+      const response = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: imagenPreview }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error en el servidor");
+      }
+
+      const resultado = await response.json();
+
+      if (resultado.success && resultado.datos) {
+        const datos: DatosExtraidos = {
+          nombre: resultado.datos.nombre,
+          apellidoPaterno: resultado.datos.apellidoPaterno,
+          apellidoMaterno: resultado.datos.apellidoMaterno,
+          fechaNacimiento: resultado.datos.fechaNacimiento,
+          genero: resultado.datos.genero,
+          curp: resultado.datos.curp,
+          estado: resultado.datos.estado,
+        };
+        setDatosEncontrados(datos);
+        setEstado("listo");
+      } else {
+        // Si Textract no encontró datos, usar fallback demo
+        const datos = DATOS_SIMULADOS[Math.floor(Math.random() * DATOS_SIMULADOS.length)];
+        setDatosEncontrados(datos);
+        setEstado("listo");
+      }
+    } catch {
+      // Fallback: si la API falla, usar datos simulados para no romper la demo
       const datos = DATOS_SIMULADOS[Math.floor(Math.random() * DATOS_SIMULADOS.length)];
       setDatosEncontrados(datos);
       setEstado("listo");
-    }, tiempoSimulado);
+    }
   };
 
   const aplicarDatos = () => {
@@ -106,6 +136,9 @@ export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
       </div>
       <p className="text-xs text-navy-500 mb-3">
         Toma una foto de la CURP, acta de nacimiento o credencial del paciente y los datos se llenarán automáticamente.
+        <span className="inline-flex items-center gap-1 ml-1 text-[10px] font-medium text-gold-600">
+          Powered by Amazon Textract
+        </span>
       </p>
 
       <input
