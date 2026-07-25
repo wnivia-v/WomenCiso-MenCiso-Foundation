@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, FileText, Loader2, CheckCircle2, X, Sparkles } from "lucide-react";
+import { Camera, FileText, Loader2, CheckCircle2, X, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface DatosExtraidos {
@@ -19,43 +19,18 @@ interface OCRDocumentoProps {
 }
 
 /**
- * Datos simulados que se "extraen" del documento para la demo.
- * En producción real, esto llamaría a una API de OCR/visión (GPT-4o, Claude, Google Vision).
+ * Los datos de relleno viven en el servidor (src/app/api/ocr/route.ts).
+ * Mantenerlos allí evita que el cliente pueda presentar datos inventados sin
+ * que el servidor lo sepa, y garantiza que la marca de "modo demo" viaje
+ * siempre junto a los datos.
  */
-const DATOS_SIMULADOS: DatosExtraidos[] = [
-  {
-    nombre: "Sofía",
-    apellidoPaterno: "García",
-    apellidoMaterno: "López",
-    fechaNacimiento: "2018-05-12",
-    genero: "FEMENINO",
-    curp: "GALS180512MDFRPF04",
-    estado: "Ciudad de México",
-  },
-  {
-    nombre: "Diego",
-    apellidoPaterno: "Martínez",
-    apellidoMaterno: "Reyes",
-    fechaNacimiento: "2015-11-03",
-    genero: "MASCULINO",
-    curp: "MARD151103HMCRGY09",
-    estado: "Estado de México",
-  },
-  {
-    nombre: "Valentina",
-    apellidoPaterno: "Hernández",
-    apellidoMaterno: "Cruz",
-    fechaNacimiento: "2020-02-28",
-    genero: "FEMENINO",
-    curp: "HECV200228MDFRNL07",
-    estado: "Jalisco",
-  },
-];
 
 export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
   const [estado, setEstado] = useState<"idle" | "preview" | "procesando" | "listo" | "error">("idle");
   const [imagenPreview, setImagenPreview] = useState<string | null>(null);
   const [datosEncontrados, setDatosEncontrados] = useState<DatosExtraidos | null>(null);
+  const [modoDemo, setModoDemo] = useState(false);
+  const [diagnostico, setDiagnostico] = useState<{ tipo?: string; mensaje?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFotoSeleccionada = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,28 +65,15 @@ export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
       const resultado = await response.json();
 
       if (resultado.success && resultado.datos) {
-        const datos: DatosExtraidos = {
-          nombre: resultado.datos.nombre,
-          apellidoPaterno: resultado.datos.apellidoPaterno,
-          apellidoMaterno: resultado.datos.apellidoMaterno,
-          fechaNacimiento: resultado.datos.fechaNacimiento,
-          genero: resultado.datos.genero,
-          curp: resultado.datos.curp,
-          estado: resultado.datos.estado,
-        };
-        setDatosEncontrados(datos);
+        setModoDemo(resultado.mode === "demo");
+        setDiagnostico(resultado.diagnostico || null);
+        setDatosEncontrados(resultado.datos as DatosExtraidos);
         setEstado("listo");
       } else {
-        // Si Textract no encontró datos, usar fallback demo
-        const datos = DATOS_SIMULADOS[Math.floor(Math.random() * DATOS_SIMULADOS.length)];
-        setDatosEncontrados(datos);
-        setEstado("listo");
+        setEstado("error");
       }
     } catch {
-      // Fallback: si la API falla, usar datos simulados para no romper la demo
-      const datos = DATOS_SIMULADOS[Math.floor(Math.random() * DATOS_SIMULADOS.length)];
-      setDatosEncontrados(datos);
-      setEstado("listo");
+      setEstado("error");
     }
   };
 
@@ -126,6 +88,8 @@ export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
     setEstado("idle");
     setImagenPreview(null);
     setDatosEncontrados(null);
+    setModoDemo(false);
+    setDiagnostico(null);
   };
 
   return (
@@ -204,9 +168,38 @@ export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
       {/* Estado: Datos extraídos */}
       {estado === "listo" && datosEncontrados && (
         <div className="space-y-3">
+          {/* Si los datos no salieron del documento, se dice sin rodeos. */}
+          {modoDemo && (
+            <div className="rounded-lg border border-amber-400 bg-amber-50 p-2.5">
+              <p className="flex items-start gap-1.5 text-xs font-bold text-amber-900">
+                <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
+                Datos de ejemplo — NO son del documento fotografiado
+              </p>
+              <p className="mt-1 pl-5 text-[11px] leading-relaxed text-amber-800">
+                Amazon Textract no respondió. Revisa cada campo antes de aplicarlo
+                al formulario.
+              </p>
+              {diagnostico?.tipo && (
+                <p className="mt-1 pl-5 font-mono text-[9px] text-amber-700">
+                  {diagnostico.tipo}
+                  {diagnostico.mensaje ? `: ${diagnostico.mensaje.slice(0, 90)}` : ""}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <p className="text-sm font-medium text-green-700">Datos extraídos correctamente</p>
+            {modoDemo ? (
+              <>
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <p className="text-sm font-medium text-amber-800">Datos de relleno</p>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-medium text-green-700">Datos leídos del documento</p>
+              </>
+            )}
           </div>
           <div className="rounded-lg bg-white border border-green-200 p-3 space-y-1.5">
             {datosEncontrados.nombre && (
@@ -234,6 +227,25 @@ export function OCRDocumento({ onDatosExtraidos }: OCRDocumentoProps) {
               Aplicar al formulario
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Estado: error */}
+      {estado === "error" && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-red-300 bg-red-50 p-3">
+            <p className="flex items-start gap-1.5 text-xs font-semibold text-red-800">
+              <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
+              No se pudo procesar el documento
+            </p>
+            <p className="mt-1 pl-5 text-[11px] leading-relaxed text-red-700">
+              Intenta con otra foto (mejor iluminación, documento completo en el
+              encuadre) o escribe los datos manualmente en el formulario.
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={resetear}>
+            Intentar de nuevo
+          </Button>
         </div>
       )}
     </div>

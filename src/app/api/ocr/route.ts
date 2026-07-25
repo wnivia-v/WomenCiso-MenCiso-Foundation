@@ -175,15 +175,29 @@ export async function POST(request: NextRequest) {
         : 0,
     });
     } catch (awsError) {
-      // Si Textract/Rekognition fallan (credenciales no disponibles, entorno local, etc.)
-      // Caer a modo demo para que la app siga funcionando
-      console.error("AWS no disponible, usando modo demo:", awsError);
+      // Si Textract/Rekognition fallan, se cae a modo demo para que la app siga
+      // usable, pero se expone el motivo del fallo. Sin esto, un problema de
+      // permisos es indistinguible de un entorno local sin credenciales, y se
+      // acaba depurando a ciegas.
+      //
+      // Se devuelve el nombre y mensaje del error de AWS (p. ej.
+      // AccessDeniedException, CredentialsProviderError). Son identificadores de
+      // diagnóstico, no secretos.
+      const err = awsError as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+      const diagnostico = {
+        tipo: err?.name || "DesconocidoError",
+        mensaje: err?.message || "Sin mensaje",
+        httpStatus: err?.$metadata?.httpStatusCode,
+      };
+      console.error("AWS no disponible, usando modo demo:", diagnostico);
+
       return NextResponse.json({
         success: true,
         mode: "demo",
         datos: obtenerDatosDemo(),
         fotoRostro: { detectado: false },
-        textoCompleto: "Modo demo — AWS Textract/Rekognition no disponible en este entorno",
+        textoCompleto: "Modo demo — AWS Textract/Rekognition no respondió",
+        diagnostico,
       });
     }
   } catch (error) {

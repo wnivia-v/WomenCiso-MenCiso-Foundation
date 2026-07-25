@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, FileText, Loader2, CheckCircle2, X, Zap } from "lucide-react";
+import { Camera, Loader2, CheckCircle2, X, Zap, AlertTriangle } from "lucide-react";
 
 interface DatosExtraidos {
   nombre?: string;
@@ -38,6 +38,8 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
   const [estado, setEstado] = useState<"idle" | "procesando" | "listo" | "error">("idle");
   const [datosEncontrados, setDatosEncontrados] = useState<DatosExtraidos | null>(null);
   const [rostroDetectado, setRostroDetectado] = useState(false);
+  const [modoDemo, setModoDemo] = useState(false);
+  const [diagnostico, setDiagnostico] = useState<{ tipo?: string; mensaje?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,13 +64,11 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
         if (response.ok) {
           const resultado = await response.json();
           if (resultado.success && resultado.datos) {
-            const datos: DatosExtraidos = {
-              ...resultado.datos,
-              // Marcar si es modo demo para que el UI lo indique
-              tipoDocumento: resultado.mode === "demo"
-                ? `${resultado.datos.tipoDocumento || "Documento"} (demo)`
-                : resultado.datos.tipoDocumento,
-            };
+            const esDemo = resultado.mode === "demo";
+            setModoDemo(esDemo);
+            setDiagnostico(resultado.diagnostico || null);
+
+            const datos: DatosExtraidos = resultado.datos;
             setDatosEncontrados(datos);
             onDatosExtraidos(datos);
 
@@ -108,6 +108,8 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
     setEstado("idle");
     setDatosEncontrados(null);
     setRostroDetectado(false);
+    setModoDemo(false);
+    setDiagnostico(null);
   };
 
   return (
@@ -153,42 +155,76 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
       )}
 
       {estado === "listo" && datosEncontrados && (
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-            <div>
-              <p className="text-xs font-semibold text-green-700 dark:text-green-400">
-                Datos aplicados automáticamente
+        <div className="space-y-2">
+          {/* Aviso destacado cuando los datos NO vienen del documento.
+              Es deliberadamente visible: unos datos inventados presentados como
+              lectura real serían peor que un error, porque nadie los cuestiona. */}
+          {modoDemo && (
+            <div className="rounded-lg border border-amber-400 bg-amber-50 p-2 dark:border-amber-500/50 dark:bg-amber-500/10">
+              <p className="flex items-start gap-1.5 text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+                Datos de ejemplo — NO corresponden al documento fotografiado
               </p>
-              <p className="mt-0.5 text-[10px] text-navy-600 dark:text-navy-300">
-                {[datosEncontrados.nombre, datosEncontrados.apellidoPaterno, datosEncontrados.apellidoMaterno]
-                  .filter(Boolean)
-                  .join(" ")}
-                {datosEncontrados.curp && ` · ${datosEncontrados.curp}`}
-                {datosEncontrados.numeroDocumento && ` · ${datosEncontrados.numeroDocumento}`}
+              <p className="mt-1 pl-5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">
+                Amazon Textract no respondió, así que se muestran datos de relleno.
+                Verifica y corrige los campos manualmente antes de continuar.
               </p>
-              {datosEncontrados.tipoDocumento && (
-                <p className="mt-0.5 text-[9px] font-medium text-navy-500 dark:text-navy-400">
-                  Tipo: {datosEncontrados.tipoDocumento}
-                  {datosEncontrados.paisEmision && ` · ${datosEncontrados.paisEmision}`}
-                  {datosEncontrados.nacionalidad && ` · ${datosEncontrados.nacionalidad}`}
-                  {rostroDetectado && (
-                    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/20 dark:text-green-300">
-                      📸 Rostro detectado
-                    </span>
-                  )}
+              {diagnostico?.tipo && (
+                <p className="mt-1 pl-5 font-mono text-[9px] text-amber-700 dark:text-amber-400">
+                  {diagnostico.tipo}
+                  {diagnostico.mensaje ? `: ${diagnostico.mensaje.slice(0, 90)}` : ""}
                 </p>
               )}
             </div>
+          )}
+
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2">
+              {modoDemo ? (
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              ) : (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+              )}
+              <div>
+                <p
+                  className={`text-xs font-semibold ${
+                    modoDemo
+                      ? "text-amber-800 dark:text-amber-300"
+                      : "text-green-700 dark:text-green-400"
+                  }`}
+                >
+                  {modoDemo ? "Datos de relleno aplicados" : "Datos leídos del documento"}
+                </p>
+                <p className="mt-0.5 text-[10px] text-navy-600 dark:text-navy-300">
+                  {[datosEncontrados.nombre, datosEncontrados.apellidoPaterno, datosEncontrados.apellidoMaterno]
+                    .filter(Boolean)
+                    .join(" ")}
+                  {datosEncontrados.curp && ` · ${datosEncontrados.curp}`}
+                  {datosEncontrados.numeroDocumento && ` · ${datosEncontrados.numeroDocumento}`}
+                </p>
+                {datosEncontrados.tipoDocumento && (
+                  <p className="mt-0.5 text-[9px] font-medium text-navy-500 dark:text-navy-400">
+                    Tipo: {datosEncontrados.tipoDocumento}
+                    {datosEncontrados.paisEmision && ` · ${datosEncontrados.paisEmision}`}
+                    {datosEncontrados.nacionalidad && ` · ${datosEncontrados.nacionalidad}`}
+                    {rostroDetectado && (
+                      <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-500/20 dark:text-green-300">
+                        Rostro detectado
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={resetear}
+              className="shrink-0 rounded-md p-1 text-navy-400 hover:bg-navy-100 dark:hover:bg-navy-800"
+              aria-label="Leer otro documento"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={resetear}
-            className="shrink-0 rounded-md p-1 text-navy-400 hover:bg-navy-100 dark:hover:bg-navy-800"
-            aria-label="Leer otro documento"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
 
