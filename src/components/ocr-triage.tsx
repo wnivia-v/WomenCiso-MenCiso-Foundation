@@ -11,6 +11,10 @@ interface DatosExtraidos {
   genero?: string;
   curp?: string;
   estado?: string;
+  tipoDocumento?: string;
+  numeroDocumento?: string;
+  paisEmision?: string;
+  nacionalidad?: string;
 }
 
 interface OCRDocumentoTriageProps {
@@ -168,7 +172,15 @@ export function OCRDocumentoTriage({ onDatosExtraidos }: OCRDocumentoTriageProps
                   .filter(Boolean)
                   .join(" ")}
                 {datosEncontrados.curp && ` · ${datosEncontrados.curp}`}
+                {datosEncontrados.numeroDocumento && ` · ${datosEncontrados.numeroDocumento}`}
               </p>
+              {datosEncontrados.tipoDocumento && (
+                <p className="mt-0.5 text-[9px] font-medium text-navy-500 dark:text-navy-400">
+                  Tipo: {datosEncontrados.tipoDocumento}
+                  {datosEncontrados.paisEmision && ` · ${datosEncontrados.paisEmision}`}
+                  {datosEncontrados.nacionalidad && ` · ${datosEncontrados.nacionalidad}`}
+                </p>
+              )}
             </div>
           </div>
           <button
