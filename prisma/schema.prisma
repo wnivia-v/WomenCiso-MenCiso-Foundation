@@ -1,0 +1,469 @@
+// WomenCiso y MenCiso Foundation - Sistema de Atención Integral a Quemados
+// Schema de base de datos
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// PACIENTES
+// ============================================
+
+model Paciente {
+  id              String   @id @default(cuid())
+  nombre          String
+  apellidoPaterno String
+  apellidoMaterno String?
+  fechaNacimiento DateTime
+  genero          Genero
+  curp            String?  @unique
+  telefono        String?
+  telefonoEmergencia String?
+  nombreContactoEmergencia String?
+  parentescoContacto String?
+  direccion       String?
+  estado          String?
+  municipio       String?
+  codigoPostal    String?
+  tipoSangre      String?
+  alergias        String?
+  antecedentes    String?
+  seguroMedico    String?
+  numeroSeguro    String?
+  fotografiaUrl   String?
+  notas           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  emergencias     Emergencia[]
+  expediente      Expediente?
+  seguimientos    Seguimiento[]
+  sesionesPs      SesionPsicologia[]
+  costos          Costo[]
+
+  @@map("pacientes")
+}
+
+enum Genero {
+  MASCULINO
+  FEMENINO
+  OTRO
+}
+
+// ============================================
+// HOSPITALES
+// ============================================
+
+model Hospital {
+  id              String   @id @default(cuid())
+  nombre          String
+  tipo            TipoHospital
+  especialidad    String[] // quemaduras, pediatria, etc.
+  direccion       String
+  estado          String
+  municipio       String
+  codigoPostal    String?
+  telefono        String
+  telefonoUrgencias String?
+  email           String?
+  latitud         Float
+  longitud        Float
+  camasDisponibles Int     @default(0)
+  camasTotales    Int      @default(0)
+  tieneUCI        Boolean  @default(false)
+  tieneQuirofano  Boolean  @default(false)
+  nivelAtencion   NivelAtencion
+  contactoNombre  String?
+  contactoCargo   String?
+  contactoTelefono String?
+  activo          Boolean  @default(true)
+  notas           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  emergencias     Emergencia[]
+  canalizaciones  Canalizacion[]
+
+  @@map("hospitales")
+}
+
+enum TipoHospital {
+  PUBLICO
+  PRIVADO
+  MILITAR
+  UNIVERSITARIO
+}
+
+enum NivelAtencion {
+  PRIMER_NIVEL    // Atención básica
+  SEGUNDO_NIVEL   // Hospital general
+  TERCER_NIVEL    // Alta especialidad
+  CENTRO_REFERENCIA // Centro nacional de referencia
+}
+
+// ============================================
+// EMERGENCIAS Y TRIAGE
+// ============================================
+
+model Emergencia {
+  id                String   @id @default(cuid())
+  pacienteId        String
+  paciente          Paciente @relation(fields: [pacienteId], references: [id])
+  
+  // Datos del reporte
+  fechaReporte      DateTime @default(now())
+  reportadoPor      String   // Nombre de quien reporta
+  parentescoReportante String?
+  telefonoReportante String
+  
+  // Ubicación del incidente
+  ubicacionIncidente String
+  latitudIncidente  Float?
+  longitudIncidente Float?
+  
+  // Datos de la quemadura
+  causaQuemadura    CausaQuemadura
+  gradoQuemadura    GradoQuemadura
+  superficieCorporal Float   // Porcentaje SCQ (Superficie Corporal Quemada)
+  zonasAfectadas    String[] // cara, manos, pies, genitales, etc.
+  tiempoTranscurrido String? // Tiempo desde la quemadura
+  primerAuxilio     String?  // Qué se hizo antes de llamar
+  
+  // Clasificación automática
+  nivelGravedad     NivelGravedad
+  prioridad         Prioridad
+  
+  // Estado
+  estado            EstadoEmergencia @default(REPORTADA)
+  
+  // Hospital asignado
+  hospitalId        String?
+  hospital          Hospital? @relation(fields: [hospitalId], references: [id])
+  
+  // Notas
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relaciones
+  canalizacion      Canalizacion?
+
+  @@map("emergencias")
+}
+
+enum CausaQuemadura {
+  LIQUIDO_CALIENTE   // Escaldadura
+  FUEGO_DIRECTO
+  ELECTRICA
+  QUIMICA
+  RADIACION
+  FRICCION
+  CONGELAMIENTO
+  OTRA
+}
+
+enum GradoQuemadura {
+  PRIMER_GRADO      // Epidermis
+  SEGUNDO_GRADO_SUPERFICIAL // Dermis superficial
+  SEGUNDO_GRADO_PROFUNDO    // Dermis profunda
+  TERCER_GRADO      // Hipodermis completa
+  CUARTO_GRADO      // Músculo/hueso
+}
+
+enum NivelGravedad {
+  LEVE              // <10% SCQ, 1er grado
+  MODERADO          // 10-20% SCQ, 2do superficial
+  GRAVE             // 20-40% SCQ, 2do profundo
+  CRITICO           // >40% SCQ, 3er/4to grado, zonas especiales
+}
+
+enum Prioridad {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum EstadoEmergencia {
+  REPORTADA
+  EN_TRIAGE
+  CANALIZADA
+  EN_TRANSITO
+  RECIBIDA_EN_HOSPITAL
+  EN_TRATAMIENTO
+  CERRADA
+}
+
+// ============================================
+// CANALIZACIÓN
+// ============================================
+
+model Canalizacion {
+  id              String   @id @default(cuid())
+  emergenciaId    String   @unique
+  emergencia      Emergencia @relation(fields: [emergenciaId], references: [id])
+  hospitalId      String
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  
+  motivo          String   // Por qué se eligió este hospital
+  distanciaKm     Float?
+  tiempoEstimado  String?  // Tiempo estimado de llegada
+  
+  hospitalNotificado Boolean @default(false)
+  fechaNotificacion  DateTime?
+  
+  hospitalAcepto  Boolean?
+  fechaAceptacion DateTime?
+  
+  estado          EstadoCanalizacion @default(PENDIENTE)
+  
+  notas           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("canalizaciones")
+}
+
+enum EstadoCanalizacion {
+  PENDIENTE
+  NOTIFICADA
+  ACEPTADA
+  RECHAZADA
+  PACIENTE_EN_CAMINO
+  PACIENTE_RECIBIDO
+  CANCELADA
+}
+
+// ============================================
+// EXPEDIENTE MÉDICO
+// ============================================
+
+model Expediente {
+  id              String   @id @default(cuid())
+  pacienteId      String   @unique
+  paciente        Paciente @relation(fields: [pacienteId], references: [id])
+  
+  // Diagnóstico
+  diagnostico     String?
+  pronostico      String?
+  
+  // Tratamiento
+  tratamientoActual String?
+  medicamentos    String?
+  
+  // Cirugías
+  cirugias        Cirugia[]
+  
+  // Documentos
+  documentos      Documento[]
+  
+  // Estado general
+  estadoPaciente  EstadoPaciente @default(ACTIVO)
+  fechaAlta       DateTime?
+  motivoAlta      String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("expedientes")
+}
+
+enum EstadoPaciente {
+  ACTIVO
+  EN_RECUPERACION
+  ALTA_MEDICA
+  SEGUIMIENTO
+  CERRADO
+}
+
+model Cirugia {
+  id              String   @id @default(cuid())
+  expedienteId    String
+  expediente      Expediente @relation(fields: [expedienteId], references: [id])
+  
+  tipo            String   // Injerto, desbridamiento, etc.
+  descripcion     String?
+  fecha           DateTime
+  hospitalDonde   String
+  cirujano        String?
+  resultado       String?
+  complicaciones  String?
+  costoEstimado   Float?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("cirugias")
+}
+
+model Documento {
+  id              String   @id @default(cuid())
+  expedienteId    String
+  expediente      Expediente @relation(fields: [expedienteId], references: [id])
+  
+  nombre          String
+  tipo            TipoDocumento
+  url             String
+  descripcion     String?
+  
+  createdAt       DateTime @default(now())
+
+  @@map("documentos")
+}
+
+enum TipoDocumento {
+  FOTO_INICIAL
+  FOTO_EVOLUCION
+  ESTUDIO_LABORATORIO
+  ESTUDIO_IMAGEN
+  RECETA
+  NOTA_MEDICA
+  REFERENCIA
+  OTRO
+}
+
+// ============================================
+// SEGUIMIENTO POST-OPERATORIO
+// ============================================
+
+model Seguimiento {
+  id              String   @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente @relation(fields: [pacienteId], references: [id])
+  
+  fecha           DateTime
+  tipo            TipoSeguimiento
+  descripcion     String
+  evolucion       String?  // Cómo va el paciente
+  proximaCita     DateTime?
+  responsable     String?  // Médico o enfermero
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("seguimientos")
+}
+
+enum TipoSeguimiento {
+  CURACION
+  REVISION_MEDICA
+  REHABILITACION
+  TERAPIA_FISICA
+  CONTROL
+  OTRO
+}
+
+// ============================================
+// PSICOLOGÍA
+// ============================================
+
+model SesionPsicologia {
+  id              String   @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente @relation(fields: [pacienteId], references: [id])
+  
+  fecha           DateTime
+  psicologo       String
+  tipo            TipoSesion
+  objetivo        String?
+  observaciones   String?
+  estadoEmocional String?
+  avance          String?
+  proximaSesion   DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("sesiones_psicologia")
+}
+
+enum TipoSesion {
+  EVALUACION_INICIAL
+  TERAPIA_INDIVIDUAL
+  TERAPIA_FAMILIAR
+  GRUPO_APOYO
+  CRISIS
+  SEGUIMIENTO
+}
+
+// ============================================
+// COSTOS Y FINANCIAMIENTO
+// ============================================
+
+model Costo {
+  id              String   @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente @relation(fields: [pacienteId], references: [id])
+  
+  concepto        String   // Cirugía, medicamento, traslado, etc.
+  categoria       CategoriaCosto
+  monto           Float
+  moneda          String   @default("MXN")
+  fecha           DateTime
+  
+  // Financiamiento
+  cubiertoPor     String?  // Fundación, aliado, seguro, etc.
+  estatusPago     EstatusPago @default(PENDIENTE)
+  comprobante     String?  // URL del comprobante
+  notas           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("costos")
+}
+
+enum CategoriaCosto {
+  CIRUGIA
+  MEDICAMENTOS
+  HOSPITALIZACION
+  ESTUDIOS
+  TRASLADO
+  REHABILITACION
+  PSICOLOGIA
+  MATERIAL_CURACION
+  OTRO
+}
+
+enum EstatusPago {
+  PENDIENTE
+  APROBADO
+  PAGADO
+  RECHAZADO
+}
+
+// ============================================
+// USUARIOS DEL SISTEMA
+// ============================================
+
+model Usuario {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  nombre          String
+  rol             RolUsuario
+  activo          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+enum RolUsuario {
+  ADMIN           // Administrador de la fundación
+  COORDINADOR     // Coordinador de casos
+  MEDICO          // Personal médico
+  PSICOLOGO       // Psicólogo
+  VOLUNTARIO      // Voluntario con acceso limitado
+}

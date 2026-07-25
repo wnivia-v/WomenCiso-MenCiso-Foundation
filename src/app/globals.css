@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy-50: #f0f3f9;
+  --color-navy-100: #dce3f0;
+  --color-navy-200: #b8c7e1;
+  --color-navy-300: #8ba4cc;
+  --color-navy-400: #5d7fb5;
+  --color-navy-500: #3d5f99;
+  --color-navy-600: #2d4a7a;
+  --color-navy-700: #1f3561;
+  --color-navy-800: #1B2A4A;
+  --color-navy-900: #121c33;
+  --color-navy-950: #0a1020;
+
+  --color-gold-50: #fdf9ed;
+  --color-gold-100: #f9f0d2;
+  --color-gold-200: #f2dfa3;
+  --color-gold-300: #e9c96b;
+  --color-gold-400: #C9A84C;
+  --color-gold-500: #b8923a;
+  --color-gold-600: #9a7430;
+  --color-gold-700: #7b5829;
+  --color-gold-800: #664828;
+  --color-gold-900: #573d25;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #f8f9fc;
+  --foreground: #1B2A4A;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scroll en móvil */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Asegurar inputs no hagan zoom en iOS */
+input, select, textarea {
+  font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  input, select, textarea {
+    font-size: 14px;
+  }
+}
+
+/* ===== ACCESIBILIDAD ===== */
+
+/* Focus visible mejorado para navegación con teclado —
+   un borde azul fuerte aparece alrededor de cualquier elemento interactivo
+   cuando se navega con Tab (no con mouse) */
+*:focus-visible {
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+/* Oculta el outline cuando se usa mouse (solo Tab lo activa) */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Clase sr-only para lectores de pantalla (texto invisible pero leíble) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Reduce movimiento para personas con sensibilidad vestibular */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Alto contraste para modo de accesibilidad del sistema */
+@media (prefers-contrast: high) {
+  :root {
+    --background: #ffffff;
+    --foreground: #000000;
+  }
+  .border-navy-100, .border-navy-200, .border-gray-100, .border-gray-200 {
+    border-color: #000000 !important;
+  }
+}
+
+
+/* ===== FIX: Contener z-index de Leaflet dentro del mapa ===== */
+/* Evita que los tiles del mapa se sobrepongan al chat, modales y otros elementos flotantes */
+.leaflet-container {
+  z-index: 0 !important;
+}
+.leaflet-pane {
+  z-index: auto !important;
+}
+.leaflet-tile-pane {
+  z-index: 1 !important;
+}
+.leaflet-overlay-pane {
+  z-index: 2 !important;
+}
+.leaflet-marker-pane {
+  z-index: 3 !important;
+}
+.leaflet-tooltip-pane {
+  z-index: 4 !important;
+}
+.leaflet-popup-pane {
+  z-index: 5 !important;
+}
+.leaflet-control {
+  z-index: 6 !important;
+}
