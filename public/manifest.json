@@ -1,0 +1,41 @@
+{
+  "name": "WomenCiso y MenCiso — Sistema de Atencion a Quemados",
+  "short_name": "WomenCiso",
+  "description": "Triage rapido, canalizacion hospitalaria y seguimiento integral para ninos con quemaduras",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1B2A4A",
+  "theme_color": "#1B2A4A",
+  "orientation": "portrait-primary",
+  "categories": ["medical", "health"],
+  "icons": [
+    {
+      "src": "/logo-womenciso-menciso-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-womenciso-menciso.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Triage Rapido",
+      "short_name": "Triage",
+      "description": "Clasificar una emergencia",
+      "url": "/emergencias/nueva",
+      "icons": [{ "src": "/logo-womenciso-menciso-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Emergencia Extrema",
+      "short_name": "Extrema",
+      "description": "Canalizar en segundos",
+      "url": "/emergencias/extrema",
+      "icons": [{ "src": "/logo-womenciso-menciso-icon.png", "sizes": "192x192" }]
+    }
+  ]
+}

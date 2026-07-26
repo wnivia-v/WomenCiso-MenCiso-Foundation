@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { calcularGravedad } from "@/lib/utils";
 import { OCRDocumentoTriage } from "@/components/ocr-triage";
+import { ExportarPDF } from "@/components/exportar-pdf";
 
 const zonasCoporales = [
   "cabeza", "cara", "cuello", "torso_anterior", "torso_posterior",
@@ -907,6 +908,36 @@ export default function NuevaEmergenciaPage() {
                 </div>
               )}
 
+              {/* Botón de navegación al hospital */}
+              <div className="mt-4 rounded-xl border-2 border-blue-300 bg-blue-50 p-3 dark:border-blue-500/30 dark:bg-blue-500/10">
+                <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                  📍 Navegar al hospital recomendado
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=CENIAQ+Centro+Nacional+Investigacion+Atencion+Quemados+CDMX&travelmode=driving`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 active:scale-[0.98]"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Google Maps
+                  </a>
+                  <a
+                    href={`https://waze.com/ul?q=CENIAQ+Centro+Nacional+Quemados&navigate=yes`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-blue-300 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 active:scale-[0.98] dark:bg-navy-800 dark:text-blue-300"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Waze
+                  </a>
+                </div>
+                <p className="mt-2 text-[10px] text-blue-700 dark:text-blue-400">
+                  Abre la app de navegación con la ruta al hospital. Si es ambulancia, compartir ubicación GPS del paso 4 con el conductor.
+                </p>
+              </div>
+
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Button
                   variant="outline"
@@ -924,6 +955,26 @@ export default function NuevaEmergenciaPage() {
                 >
                   Registrar y Canalizar
                 </Button>
+                <ExportarPDF
+                  datos={{
+                    titulo: "Reporte de Canalización",
+                    paciente: form.nombrePaciente,
+                    edad: form.edadPaciente,
+                    gravedad: resultado.nivelGravedad,
+                    prioridad: resultado.prioridad,
+                    causa: form.causaQuemadura,
+                    superficie: form.superficieCorporal,
+                    zonas: form.zonasAfectadas,
+                    hospital: resultado.nivelGravedad === "CRITICO" ? "CENIAQ — Centro Nacional de Quemados"
+                      : resultado.nivelGravedad === "GRAVE" ? "Hospital con unidad de quemados"
+                      : resultado.nivelGravedad === "MODERADO" ? "Hospital General más cercano"
+                      : "Centro de salud",
+                    reportadoPor: form.reportadoPor,
+                    ubicacion: form.ubicacionIncidente,
+                    observaciones: form.observaciones,
+                    gps: form.ubicacionGPS,
+                  }}
+                />
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto"
