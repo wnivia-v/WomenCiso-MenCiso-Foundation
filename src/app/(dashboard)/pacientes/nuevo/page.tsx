@@ -18,6 +18,7 @@ export default function NuevoPacientePage() {
     apellidoMaterno: "",
     fechaNacimiento: "",
     genero: "",
+    tipoDocumento: "",
     curp: "",
     telefono: "",
     telefonoEmergencia: "",
@@ -62,6 +63,24 @@ export default function NuevoPacientePage() {
         {/* OCR - Llenado rápido con foto de documento */}
         <OCRDocumento
           onDatosExtraidos={(datos) => {
+            // Detectar tipo de documento y número
+            let tipoDoc = "";
+            let numDoc = "";
+            if (datos.curp) {
+              tipoDoc = "CURP";
+              numDoc = datos.curp;
+            } else if ((datos as Record<string, string>).numeroDocumento) {
+              numDoc = (datos as Record<string, string>).numeroDocumento;
+              const tipo = (datos as Record<string, string>).tipoDocumento || "";
+              if (tipo.includes("Pasaporte")) tipoDoc = "PASAPORTE";
+              else if (tipo.includes("Cédula")) tipoDoc = "CEDULA";
+              else if (tipo.includes("DNI")) tipoDoc = "DNI";
+              else if (tipo.includes("NIE")) tipoDoc = "NIE";
+              else if (tipo.includes("INE")) tipoDoc = "INE";
+              else if (tipo.includes("Licencia")) tipoDoc = "LICENCIA";
+              else tipoDoc = "OTRO";
+            }
+
             setForm((prev) => ({
               ...prev,
               ...(datos.nombre && { nombre: datos.nombre }),
@@ -69,7 +88,8 @@ export default function NuevoPacientePage() {
               ...(datos.apellidoMaterno && { apellidoMaterno: datos.apellidoMaterno }),
               ...(datos.fechaNacimiento && { fechaNacimiento: datos.fechaNacimiento }),
               ...(datos.genero && { genero: datos.genero }),
-              ...(datos.curp && { curp: datos.curp }),
+              ...(numDoc && { curp: numDoc }),
+              ...(tipoDoc && { tipoDocumento: tipoDoc }),
               ...(datos.estado && { estado: datos.estado }),
             }));
           }}
@@ -103,7 +123,7 @@ export default function NuevoPacientePage() {
                 onChange={(e) => updateForm("apellidoMaterno", e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Input
                 label="Fecha de Nacimiento"
                 type="date"
@@ -122,10 +142,26 @@ export default function NuevoPacientePage() {
                 value={form.genero}
                 onChange={(e) => updateForm("genero", e.target.value)}
               />
+              <Select
+                label="Tipo de documento"
+                placeholder="Seleccione..."
+                options={[
+                  { value: "CURP", label: "CURP (México)" },
+                  { value: "INE", label: "INE/IFE (México)" },
+                  { value: "CEDULA", label: "Cédula de ciudadanía" },
+                  { value: "PASAPORTE", label: "Pasaporte" },
+                  { value: "DNI", label: "DNI" },
+                  { value: "NIE", label: "NIE (España)" },
+                  { value: "LICENCIA", label: "Licencia de conducir" },
+                  { value: "ACTA_NACIMIENTO", label: "Acta de nacimiento" },
+                  { value: "OTRO", label: "Otro documento" },
+                ]}
+                value={form.tipoDocumento}
+                onChange={(e) => updateForm("tipoDocumento", e.target.value)}
+              />
               <Input
-                label="CURP"
-                placeholder="CURP (18 caracteres)"
-                maxLength={18}
+                label="Número de identificación"
+                placeholder="Número del documento"
                 value={form.curp}
                 onChange={(e) => updateForm("curp", e.target.value)}
               />
