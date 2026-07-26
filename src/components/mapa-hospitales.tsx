@@ -118,19 +118,44 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
   const buscarHospitalesCercanos = useCallback(async (lat: number, lng: number) => {
     setBuscandoHospitales(true);
     try {
-      const res = await fetch(`/api/hospitales-cercanos?lat=${lat}&lng=${lng}&radio=200`);
+      // Consultar Overpass API directamente desde el cliente
+      // Es gratuita, sin API key, y tiene hospitales de todo el mundo
+      const radioMetros = 200000; // 200 km
+      const query = `[out:json][timeout:15];(node["amenity"="hospital"](around:${radioMetros},${lat},${lng});way["amenity"="hospital"](around:${radioMetros},${lat},${lng}););out center 50;`;
+
+      const res = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+
       if (res.ok) {
         const data = await res.json();
-        if (data.hospitales && data.hospitales.length > 0) {
-          const conDistancia = data.hospitales.map((h: HospitalLocal) => ({
-            ...h,
-            distanciaKm: calcularDistanciaKm(lat, lng, h.latitud, h.longitud),
-          })).sort((a: HospitalLocal, b: HospitalLocal) => (a.distanciaKm || 0) - (b.distanciaKm || 0));
-          setHospitalesLocales(conDistancia);
-        }
+        const resultados = (data.elements || [])
+          .map((el: { id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> }) => {
+            const elLat = el.lat || el.center?.lat;
+            const elLng = el.lon || el.center?.lon;
+            if (!elLat || !elLng) return null;
+            const tags = el.tags || {};
+            return {
+              id: `osm-${el.id}`,
+              nombre: tags.name || tags["name:es"] || tags["name:en"] || "Hospital",
+              direccion: tags["addr:street"] ? `${tags["addr:street"]} ${tags["addr:housenumber"] || ""}, ${tags["addr:city"] || ""}`.trim() : (tags["addr:city"] || ""),
+              telefono: tags.phone || tags["contact:phone"] || "",
+              emergencia: tags.emergency === "yes",
+              latitud: elLat,
+              longitud: elLng,
+              distanciaKm: calcularDistanciaKm(lat, lng, elLat, elLng),
+            };
+          })
+          .filter(Boolean)
+          .sort((a: HospitalLocal, b: HospitalLocal) => (a.distanciaKm || 0) - (b.distanciaKm || 0))
+          .slice(0, 50);
+
+        setHospitalesLocales(resultados);
       }
     } catch {
-      // Si falla, se muestran solo los de la base de datos
+      // Si Overpass no responde, se muestran solo los de la base
     }
     setBuscandoHospitales(false);
   }, []);

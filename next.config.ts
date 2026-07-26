@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
               "font-src 'self'",
               "media-src 'self' blob:",
-              "connect-src 'self' https://*.tile.openstreetmap.org",
+              "connect-src 'self' https://*.tile.openstreetmap.org https://overpass-api.de",
               "frame-src 'none'",
               "object-src 'none'",
               "base-uri 'self'",
