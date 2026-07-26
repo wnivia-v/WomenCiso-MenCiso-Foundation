@@ -90,15 +90,15 @@ export default function NuevoPacientePage() {
                 required
               />
               <Input
-                label="Apellido Paterno"
-                placeholder="Apellido paterno"
+                label="Apellido 1"
+                placeholder="Primer apellido"
                 value={form.apellidoPaterno}
                 onChange={(e) => updateForm("apellidoPaterno", e.target.value)}
                 required
               />
               <Input
-                label="Apellido Materno"
-                placeholder="Apellido materno"
+                label="Apellido 2"
+                placeholder="Segundo apellido"
                 value={form.apellidoMaterno}
                 onChange={(e) => updateForm("apellidoMaterno", e.target.value)}
               />
