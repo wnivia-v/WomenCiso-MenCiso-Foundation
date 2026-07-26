@@ -610,6 +610,43 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
     datos.tipoDocumento = "Documento de identidad";
   }
 
+  // ===== POST-PROCESAMIENTO: separar nombre completo si apellidos están vacíos =====
+  // Esto resuelve el caso donde Textract lee todo en una sola etiqueta "NOMBRE"
+  // y devuelve "JUAN CARLOS GARCIA LOPEZ" sin separar apellidos.
+  if (datos.nombre && !datos.apellidoPaterno) {
+    const partes = datos.nombre.trim().split(/\s+/);
+    if (partes.length >= 3) {
+      // Si tenemos CURP, usarla para encontrar dónde empieza el apellido
+      if (datos.curp) {
+        const inicialCurp = datos.curp.substring(0, 2).toUpperCase();
+        const indiceApellido = partes.findIndex(p => p.substring(0, 2).toUpperCase() === inicialCurp);
+        if (indiceApellido >= 0 && indiceApellido < partes.length) {
+          datos.apellidoPaterno = partes[indiceApellido];
+          if (indiceApellido + 1 < partes.length) {
+            // Verificar si la siguiente parte es apellido materno usando 3ra letra de CURP
+            datos.apellidoMaterno = partes[indiceApellido + 1];
+          }
+          datos.nombre = partes.filter((_, i) => i !== indiceApellido && i !== indiceApellido + 1).join(" ");
+        } else {
+          // CURP no coincide, asumir: últimos 2 son apellidos, el resto nombre
+          datos.apellidoMaterno = partes[partes.length - 1];
+          datos.apellidoPaterno = partes[partes.length - 2];
+          datos.nombre = partes.slice(0, partes.length - 2).join(" ");
+        }
+      } else {
+        // Sin CURP: asumir que los últimos 2 palabras son apellidos
+        // (formato más universal: "NOMBRE APELLIDO1 APELLIDO2")
+        datos.apellidoMaterno = partes[partes.length - 1];
+        datos.apellidoPaterno = partes[partes.length - 2];
+        datos.nombre = partes.slice(0, partes.length - 2).join(" ");
+      }
+    } else if (partes.length === 2) {
+      // Solo 2 palabras: una es nombre, otra apellido
+      datos.apellidoPaterno = partes[partes.length - 1];
+      datos.nombre = partes[0];
+    }
+  }
+
   return datos;
 }
 
