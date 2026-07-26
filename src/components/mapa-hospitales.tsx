@@ -89,6 +89,19 @@ function CentrarMapa({ posicion }: { posicion: { lat: number; lng: number } }) {
   return null;
 }
 
+interface HospitalLocal {
+  id: string;
+  nombre: string;
+  direccion: string;
+  telefono: string;
+  emergencia: boolean;
+  latitud: number;
+  longitud: number;
+  tipo: string;
+  fuente: string;
+  distanciaKm?: number;
+}
+
 interface MapaHospitalesProps {
   hospitales: HospitalVista[];
 }
@@ -99,6 +112,28 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
   const [ubicacionReal, setUbicacionReal] = useState(false);
   const [buscando, setBuscando] = useState(true);
   const [errorGPS, setErrorGPS] = useState("");
+  const [hospitalesLocales, setHospitalesLocales] = useState<HospitalLocal[]>([]);
+  const [buscandoHospitales, setBuscandoHospitales] = useState(false);
+
+  const buscarHospitalesCercanos = useCallback(async (lat: number, lng: number) => {
+    setBuscandoHospitales(true);
+    try {
+      const res = await fetch(`/api/hospitales-cercanos?lat=${lat}&lng=${lng}&radio=200`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hospitales && data.hospitales.length > 0) {
+          const conDistancia = data.hospitales.map((h: HospitalLocal) => ({
+            ...h,
+            distanciaKm: calcularDistanciaKm(lat, lng, h.latitud, h.longitud),
+          })).sort((a: HospitalLocal, b: HospitalLocal) => (a.distanciaKm || 0) - (b.distanciaKm || 0));
+          setHospitalesLocales(conDistancia);
+        }
+      }
+    } catch {
+      // Si falla, se muestran solo los de la base de datos
+    }
+    setBuscandoHospitales(false);
+  }, []);
 
   const obtenerUbicacion = useCallback(() => {
     if (!("geolocation" in navigator)) {
@@ -109,21 +144,23 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setMiUbicacion({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setMiUbicacion(coords);
         setUbicacionReal(true);
         setBuscando(false);
+        buscarHospitalesCercanos(coords.lat, coords.lng);
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
-          setErrorGPS("Ubicación denegada — mostrando CDMX como referencia");
+          setErrorGPS("Ubicación denegada — mostrando hospitales de la red");
         } else {
-          setErrorGPS("No se pudo obtener ubicación — usando CDMX");
+          setErrorGPS("No se pudo obtener ubicación");
         }
         setBuscando(false);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
-  }, []);
+  }, [buscarHospitalesCercanos]);
 
   useEffect(() => {
     setMontado(true);
@@ -259,6 +296,51 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
             </Marker>
           ))}
 
+          {/* Hospitales locales (OpenStreetMap — cualquier país) */}
+          {hospitalesLocales.map((hospital) => (
+            <Marker
+              key={hospital.id}
+              position={[hospital.latitud, hospital.longitud]}
+              icon={L.divIcon({
+                className: "",
+                html: `<div style="background:#8b5cf6;width:26px;height:26px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+                  <span style="color:white;font-size:10px;font-weight:800;">H</span>
+                </div>`,
+                iconSize: [26, 26],
+                iconAnchor: [13, 13],
+              })}
+            >
+              <Popup maxWidth={280}>
+                <div style={{ minWidth: 200, fontFamily: "system-ui, sans-serif" }}>
+                  <p style={{ fontWeight: 800, fontSize: 13, marginBottom: 2, color: "#1B2A4A" }}>
+                    {hospital.nombre}
+                  </p>
+                  {hospital.direccion && (
+                    <p style={{ fontSize: 10, color: "#666", marginBottom: 4 }}>{hospital.direccion}</p>
+                  )}
+                  <div style={{ background: "#f5f3ff", borderRadius: 6, padding: "6px 8px", marginBottom: 8 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: "#6d28d9" }}>
+                      📍 {formatearDistancia(hospital.distanciaKm || 0)} — {tiempoEstimado(hospital.distanciaKm || 0)}
+                    </p>
+                  </div>
+                  {hospital.telefono && (
+                    <p style={{ fontSize: 11, marginBottom: 4 }}>
+                      <strong>Tel:</strong> <a href={`tel:${hospital.telefono}`} style={{ color: "#6d28d9" }}>{hospital.telefono}</a>
+                    </p>
+                  )}
+                  {hospital.emergencia && (
+                    <p style={{ fontSize: 10, color: "#dc2626", fontWeight: 700, marginBottom: 4 }}>🚨 Tiene urgencias</p>
+                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${hospital.latitud},${hospital.longitud}&travelmode=driving`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#2563eb", color: "white", borderRadius: 6, padding: "6px 8px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>Maps</a>
+                    <a href={`https://waze.com/ul?ll=${hospital.latitud},${hospital.longitud}&navigate=yes`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#0ea5e9", color: "white", borderRadius: 6, padding: "6px 8px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>Waze</a>
+                  </div>
+                  <p style={{ fontSize: 9, color: "#999", marginTop: 6, textAlign: "center" }}>Fuente: OpenStreetMap</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
           {/* Mi ubicación */}
           <Marker position={[miUbicacion.lat, miUbicacion.lng]} icon={iconoUsuario}>
             <Popup>
@@ -291,7 +373,7 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
       {/* Leyenda */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-navy-500 dark:text-navy-400">
         <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-full bg-green-500" /> Con camas
+          <span className="inline-block h-3 w-3 rounded-full bg-green-500" /> Con camas (red)
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block h-3 w-3 rounded-full bg-yellow-500" /> Pocas camas
@@ -300,12 +382,73 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
           <span className="inline-block h-3 w-3 rounded-full bg-red-500" /> Sin camas
         </span>
         <span className="flex items-center gap-1">
-          <span className="relative inline-block h-3 w-3 rounded-full bg-blue-500" /> Tu ubicación
+          <span className="inline-block h-3 w-3 rounded-full bg-purple-500" /> Hospital local
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-full border border-dashed border-blue-400" /> Radio 20 km
+          <span className="relative inline-block h-3 w-3 rounded-full bg-blue-500" /> Tu ubicación
         </span>
       </div>
+
+      {/* Hospitales locales (de la zona) */}
+      {hospitalesLocales.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-purple-700 dark:text-purple-300">
+              Hospitales cerca de ti ({hospitalesLocales.length}):
+            </p>
+            {buscandoHospitales && (
+              <span className="text-[10px] text-navy-500 animate-pulse">Buscando...</span>
+            )}
+          </div>
+          {hospitalesLocales.slice(0, 10).map((h, i) => (
+            <div
+              key={h.id}
+              className="flex items-center justify-between gap-2 rounded-lg border border-purple-100 bg-purple-50/30 p-2.5 dark:border-purple-500/20 dark:bg-purple-500/5"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+                  {i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-navy-800 dark:text-white">
+                    {h.nombre}
+                  </p>
+                  <p className="text-[10px] text-navy-500">
+                    {formatearDistancia(h.distanciaKm || 0)} · {tiempoEstimado(h.distanciaKm || 0)}
+                    {h.emergencia && <span className="ml-1 text-red-600">· Urgencias</span>}
+                  </p>
+                  {h.direccion && (
+                    <p className="truncate text-[9px] text-navy-400">{h.direccion}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-1">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${h.latitud},${h.longitud}&travelmode=driving`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-blue-600 px-2 py-1 text-[9px] font-bold text-white hover:bg-blue-700"
+                >
+                  Maps
+                </a>
+                <a
+                  href={`https://waze.com/ul?ll=${h.latitud},${h.longitud}&navigate=yes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-sky-500 px-2 py-1 text-[9px] font-bold text-white hover:bg-sky-600"
+                >
+                  Waze
+                </a>
+              </div>
+            </div>
+          ))}
+          {hospitalesLocales.length > 10 && (
+            <p className="text-center text-[10px] text-navy-500">
+              y {hospitalesLocales.length - 10} hospitales más en tu zona
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Lista de hospitales por cercanía */}
       <div className="space-y-2">
