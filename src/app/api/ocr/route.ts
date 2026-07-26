@@ -508,24 +508,32 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
   // ===== 9. DETECCIÓN GENÉRICA DE NOMBRE =====
   if (!datos.nombre && !datos.nombreCompleto) {
     // Buscar etiquetas comunes que preceden al nombre
-    const nombrePatrones = [
-      /(?:NOMBRE|NAME|GIVEN NAME|PRENOM)[S]?\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i,
-      /(?:APELLIDO|SURNAME|LAST NAME|NOM)\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i,
-    ];
+    // Intentar patrones con etiqueta explícita primero (más confiable)
+    const patronNombre = texto.match(/(?:NOMBRE|NAME|GIVEN NAME|PRENOM|NOMBRES)[S]?\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
+    const patronApellidoP = texto.match(/(?:APELLIDO\s*PATERNO|PRIMER\s*APELLIDO|SURNAME|LAST\s*NAME|APELLIDO\s*1)[S]?\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
+    const patronApellidoM = texto.match(/(?:APELLIDO\s*MATERNO|SEGUNDO\s*APELLIDO|APELLIDO\s*2)\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
 
-    for (const patron of nombrePatrones) {
-      const match = texto.match(patron);
-      if (match) {
-        const valor = match[1].trim();
-        if (valor.length > 2 && !/^(NOMBRE|NAME|APELLIDO|SURNAME)$/i.test(valor)) {
-          if (!datos.nombre) datos.nombre = valor;
-          else if (!datos.apellidoPaterno) datos.apellidoPaterno = valor;
-        }
+    if (patronNombre) {
+      const val = patronNombre[1].trim();
+      if (val.length > 1 && !/^(NOMBRE|NAME|APELLIDO)$/i.test(val)) {
+        datos.nombre = val;
+      }
+    }
+    if (patronApellidoP) {
+      const val = patronApellidoP[1].trim();
+      if (val.length > 1 && !/^(APELLIDO|SURNAME|PATERNO)$/i.test(val)) {
+        datos.apellidoPaterno = val;
+      }
+    }
+    if (patronApellidoM) {
+      const val = patronApellidoM[1].trim();
+      if (val.length > 1 && !/^(APELLIDO|MATERNO)$/i.test(val)) {
+        datos.apellidoMaterno = val;
       }
     }
 
     // Si no encontró con etiquetas, buscar líneas que parezcan nombres
-    if (!datos.nombre) {
+    if (!datos.nombre && !datos.apellidoPaterno) {
       for (const linea of lineas) {
         const limpia = linea.trim();
         if (
@@ -533,11 +541,34 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
           limpia.length >= 5 &&
           limpia.length <= 50 &&
           limpia.split(/\s+/).length >= 2 &&
-          !/CURP|REGISTRO|NACIMIENTO|REPUBLIC|ESTADOS|GOBIERNO|SECRETARIA|ELECTORAL|INSTITUTO/i.test(limpia)
+          !/CURP|REGISTRO|NACIMIENTO|REPUBLIC|ESTADOS|GOBIERNO|SECRETARIA|ELECTORAL|INSTITUTO|CLAVE|CREDENCIAL|NOMBRE|APELLIDO/i.test(limpia)
         ) {
           datos.nombreCompleto = limpia;
           const partes = limpia.split(/\s+/);
-          if (partes.length >= 3) {
+
+          // Si tenemos CURP, usarla para validar el orden:
+          // Las 2 primeras letras de la CURP son las iniciales del apellido paterno
+          if (datos.curp && partes.length >= 3) {
+            const inicialCurp = datos.curp.substring(0, 2).toUpperCase();
+            // Buscar qué parte coincide con la inicial de la CURP
+            const indiceApellido = partes.findIndex(p => p.substring(0, 2).toUpperCase() === inicialCurp);
+            if (indiceApellido >= 0) {
+              datos.apellidoPaterno = partes[indiceApellido];
+              // Lo que viene después del apellido paterno es el apellido materno
+              if (indiceApellido + 1 < partes.length && partes.length > indiceApellido + 1) {
+                datos.apellidoMaterno = partes[indiceApellido + 1];
+              }
+              // Lo que queda es el nombre
+              const nombrePartes = partes.filter((_, i) => i !== indiceApellido && i !== indiceApellido + 1);
+              if (nombrePartes.length > 0) datos.nombre = nombrePartes.join(" ");
+            } else {
+              // No se pudo validar con CURP, asumir formato APELLIDO APELLIDO NOMBRE
+              datos.apellidoPaterno = partes[0];
+              datos.apellidoMaterno = partes[1];
+              datos.nombre = partes.slice(2).join(" ");
+            }
+          } else if (partes.length >= 3) {
+            // Sin CURP: asumir formato APELLIDO APELLIDO NOMBRE (formato oficial mexicano)
             datos.apellidoPaterno = partes[0];
             datos.apellidoMaterno = partes[1];
             datos.nombre = partes.slice(2).join(" ");
