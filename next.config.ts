@@ -41,6 +41,7 @@ const nextConfig: NextConfig = {
               // cámara, que se manejan en memoria antes de enviarse.
               "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
               "font-src 'self'",
+              "media-src 'self' blob:",
               "connect-src 'self' https://*.tile.openstreetmap.org",
               "frame-src 'none'",
               "object-src 'none'",

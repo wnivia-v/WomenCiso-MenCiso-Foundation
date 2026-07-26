@@ -57,10 +57,50 @@ export function VozProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Audio element para reproducir el MP3 de Polly
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const leer = useCallback(
-    (texto: string) => {
+    async (texto: string) => {
       if (!activo || !soportado) return;
+
+      // Detener cualquier reproducción anterior
       window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Intentar con Amazon Polly (voz neural, suena humana)
+      try {
+        abortControllerRef.current = new AbortController();
+        const idioma = localStorage.getItem("womenciso-idioma") || "es";
+
+        const response = await fetch("/api/voz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto: texto.slice(0, 1000), idioma }),
+          signal: abortControllerRef.current.signal,
+        });
+
+        if (response.ok && response.headers.get("content-type")?.includes("audio")) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          audio.onended = () => URL.revokeObjectURL(url);
+          await audio.play();
+          return; // Polly funcionó, no usar fallback
+        }
+      } catch {
+        // Si Polly no está disponible, continuar con fallback
+      }
+
+      // Fallback: voz del navegador (menos natural pero siempre disponible)
       const utterance = new SpeechSynthesisUtterance(texto);
       utterance.lang = "es-MX";
       utterance.rate = 1.0;
@@ -78,6 +118,14 @@ export function VozProvider({ children }: { children: ReactNode }) {
   const detener = useCallback(() => {
     if (soportado) {
       window.speechSynthesis.cancel();
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
   }, [soportado]);
 

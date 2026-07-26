@@ -15,6 +15,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-polly": "^3.1095.0",
     "@aws-sdk/client-rekognition": "^3.1095.0",
     "@aws-sdk/client-textract": "^3.1095.0",
     "@prisma/adapter-pg": "^7.9.0",
