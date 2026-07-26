@@ -46,3 +46,13 @@ next-env.d.ts
 tunnel.log
 build2.log
 *.log
+
+# Configuracion de otros editores de IA (no son parte del proyecto)
+AGENTS.md
+CLAUDE.md
+.claude/
+.windsurf/
+skills-lock.json
+
+# Carpeta de pruebas de imagenes
+img de prueba/
