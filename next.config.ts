@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   // Desactiva el header X-Powered-By que revela que el servidor es Next.js
   poweredByHeader: false,
 
+  // Exponer DATABASE_URL al runtime del servidor.
+  // En Amplify, las variables de entorno están disponibles durante el build
+  // pero no siempre en el runtime SSR. Esta configuración las pasa explícitamente.
+  env: {
+    DATABASE_URL: process.env.DATABASE_URL || "",
+  },
+
   async headers() {
     return [
       {
