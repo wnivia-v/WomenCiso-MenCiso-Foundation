@@ -60,6 +60,10 @@ export default function RootLayout({
                   navigator.serviceWorker.register('/sw.js').catch(() => {});
                 });
               }
+              // Bloquear el prompt de instalación de PWA
+              window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+              });
             `,
           }}
         />
