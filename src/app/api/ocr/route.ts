@@ -476,31 +476,71 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
 
   // ===== 7. DETECCIÓN GENÉRICA DE FECHAS =====
   if (!datos.fechaNacimiento) {
-    // Formatos: DD/MM/AAAA, DD-MM-AAAA, MM/DD/AAAA, AAAA-MM-DD
+    // Meses en español para formato "12 - ABRIL - 1996"
+    const mesesES: Record<string, string> = {
+      ENERO: "01", FEBRERO: "02", MARZO: "03", ABRIL: "04",
+      MAYO: "05", JUNIO: "06", JULIO: "07", AGOSTO: "08",
+      SEPTIEMBRE: "09", SETIEMBRE: "09", OCTUBRE: "10",
+      NOVIEMBRE: "11", DICIEMBRE: "12",
+      ENE: "01", FEB: "02", MAR: "03", ABR: "04",
+      MAY: "05", JUN: "06", JUL: "07", AGO: "08",
+      SEP: "09", OCT: "10", NOV: "11", DIC: "12",
+    };
+
     const fechaPatrones = [
+      // "FECHA DE NACIMIENTO: 12 - ABRIL - 1996" (cédula colombiana)
+      { regex: /(?:NACIMIENTO|BIRTH|NAC|DOB|F\.?\s*(?:DE\s*)?NAC)[:\s]*(\d{1,2})\s*[-/.]\s*([A-ZÁÉÍÓÚ]+)\s*[-/.]\s*(\d{4})/, tipo: "dmy_texto" },
+      // "21 - SEP - 1946"
+      { regex: /(\d{1,2})\s*[-/.]\s*([A-ZÁÉÍÓÚ]+)\s*[-/.]\s*(\d{4})/, tipo: "dmy_texto" },
+      // "FECHA DE NACIMIENTO: DD/MM/AAAA"
       { regex: /(?:NACIMIENTO|BIRTH|NAC|DOB|F\.?\s*NAC)[:\s]*(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/, tipo: "dmy" },
+      // "AAAA-MM-DD" (ISO)
       { regex: /(\d{4})[\/\-.](\d{2})[\/\-.](\d{2})/, tipo: "ymd" },
+      // "DD/MM/AAAA" genérico
       { regex: /(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/, tipo: "dmy" },
     ];
 
     for (const patron of fechaPatrones) {
       const match = texto.match(patron.regex);
       if (match) {
-        if (patron.tipo === "ymd") {
+        if (patron.tipo === "dmy_texto") {
+          const dia = match[1].padStart(2, "0");
+          const mesTexto = match[2].toUpperCase();
+          const anio = match[3];
+          const mes = mesesES[mesTexto];
+          if (mes) {
+            datos.fechaNacimiento = `${anio}-${mes}-${dia}`;
+            break;
+          }
+        } else if (patron.tipo === "ymd") {
           datos.fechaNacimiento = `${match[1]}-${match[2]}-${match[3]}`;
+          break;
         } else {
           datos.fechaNacimiento = `${match[3]}-${match[2]}-${match[1]}`;
+          break;
         }
-        break;
       }
     }
   }
 
   // ===== 8. DETECCIÓN GENÉRICA DE GÉNERO =====
   if (!datos.genero) {
-    if (/\b(MASCULINO|MALE|HOMBRE|MASC|SEX:?\s*M)\b/.test(texto)) {
+    // Formato explícito: MASCULINO/FEMENINO/MALE/FEMALE
+    if (/\b(MASCULINO|MALE|HOMBRE|MASC)\b/.test(texto)) {
       datos.genero = "MASCULINO";
-    } else if (/\b(FEMENINO|FEMALE|MUJER|FEM|SEX:?\s*F)\b/.test(texto)) {
+    } else if (/\b(FEMENINO|FEMALE|MUJER|FEM)\b/.test(texto)) {
+      datos.genero = "FEMENINO";
+    }
+    // Formato corto: "SEXO: M" o "SEXO: F" (cédula colombiana/pasaportes)
+    else if (/SEXO\s*:?\s*M\b/.test(texto)) {
+      datos.genero = "MASCULINO";
+    } else if (/SEXO\s*:?\s*F\b/.test(texto)) {
+      datos.genero = "FEMENINO";
+    }
+    // Formato inglés corto: "SEX: M" / "SEX: F"
+    else if (/SEX\s*:?\s*M\b/.test(texto)) {
+      datos.genero = "MASCULINO";
+    } else if (/SEX\s*:?\s*F\b/.test(texto)) {
       datos.genero = "FEMENINO";
     }
   }
@@ -509,26 +549,49 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
   if (!datos.nombre && !datos.nombreCompleto) {
     // Buscar etiquetas comunes que preceden al nombre
     // Intentar patrones con etiqueta explícita primero (más confiable)
-    const patronNombre = texto.match(/(?:NOMBRE|NAME|GIVEN NAME|PRENOM|NOMBRES)[S]?\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
-    const patronApellidoP = texto.match(/(?:APELLIDO\s*PATERNO|PRIMER\s*APELLIDO|SURNAME|LAST\s*NAME|APELLIDO\s*1)[S]?\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
+    // Formatos encontrados en documentos reales:
+    //   CURP mexicana: "Nombre: SOFIA GARCIA LOPEZ" (todo junto)
+    //   Cédula colombiana: "APELLIDOS: FLOREZ QUINTERO" + "NOMBRES: ANDRES FELIPE"
+    //   Pasaporte colombiano: "APELLIDOS: MONTOYA RODRIGUEZ" + "NOMBRES: ISABEL SOFIA"
+    //   Pasaporte mexicano: "APELLIDOS: NAVARRO CHAVEZ" + "NOMBRES: RICARDO ANDRES"
+    const patronNombres = texto.match(/(?:NOMBRES?|GIVEN\s*NAME|PRENOM|FIRST\s*NAME)[S]?\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
+    const patronApellidos = texto.match(/(?:APELLIDOS?|SURNAME|LAST\s*NAME|FAMILY\s*NAME)\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
+    const patronApellidoP = texto.match(/(?:APELLIDO\s*PATERNO|PRIMER\s*APELLIDO|APELLIDO\s*1)\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
     const patronApellidoM = texto.match(/(?:APELLIDO\s*MATERNO|SEGUNDO\s*APELLIDO|APELLIDO\s*2)\s*:?\s*([A-ZÁÉÍÓÚÑÜÂÊÎÔÛÀÈÌÒÙ\s]{2,40})/i);
 
-    if (patronNombre) {
-      const val = patronNombre[1].trim();
-      if (val.length > 1 && !/^(NOMBRE|NAME|APELLIDO)$/i.test(val)) {
-        datos.nombre = val;
+    // Caso 1: "APELLIDOS:" con ambos apellidos juntos (cédula colombiana, pasaportes)
+    if (patronApellidos) {
+      const val = patronApellidos[1].trim();
+      if (val.length > 1 && !/^(APELLIDOS?|SURNAME)$/i.test(val)) {
+        const partesApellido = val.split(/\s+/);
+        if (partesApellido.length >= 2) {
+          datos.apellidoPaterno = partesApellido[0];
+          datos.apellidoMaterno = partesApellido.slice(1).join(" ");
+        } else {
+          datos.apellidoPaterno = val;
+        }
       }
     }
-    if (patronApellidoP) {
+
+    // Caso 2: "APELLIDO PATERNO:" y "APELLIDO MATERNO:" separados
+    if (patronApellidoP && !datos.apellidoPaterno) {
       const val = patronApellidoP[1].trim();
-      if (val.length > 1 && !/^(APELLIDO|SURNAME|PATERNO)$/i.test(val)) {
+      if (val.length > 1 && !/^(APELLIDO|PATERNO)$/i.test(val)) {
         datos.apellidoPaterno = val;
       }
     }
-    if (patronApellidoM) {
+    if (patronApellidoM && !datos.apellidoMaterno) {
       const val = patronApellidoM[1].trim();
       if (val.length > 1 && !/^(APELLIDO|MATERNO)$/i.test(val)) {
         datos.apellidoMaterno = val;
+      }
+    }
+
+    // Caso 3: "NOMBRES:" o "NOMBRE:" con el nombre (puede ser uno o dos nombres)
+    if (patronNombres) {
+      const val = patronNombres[1].trim();
+      if (val.length > 1 && !/^(NOMBRES?|NAME|GIVEN)$/i.test(val)) {
+        datos.nombre = val;
       }
     }
 
