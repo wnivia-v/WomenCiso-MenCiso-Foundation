@@ -121,16 +121,23 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
       // Consultar Overpass API directamente desde el cliente
       // Es gratuita, sin API key, y tiene hospitales de todo el mundo
       const radioMetros = 200000; // 200 km
-      const query = `[out:json][timeout:15];(node["amenity"="hospital"](around:${radioMetros},${lat},${lng});way["amenity"="hospital"](around:${radioMetros},${lat},${lng}););out center 50;`;
+      const query = `[out:json][timeout:25];(node["amenity"="hospital"](around:${radioMetros},${lat},${lng});way["amenity"="hospital"](around:${radioMetros},${lat},${lng}););out center 50;`;
+
+      console.log("[Mapa] Buscando hospitales cerca de:", lat, lng);
 
       const res = await fetch("https://overpass-api.de/api/interpreter", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(25000),
       });
+
+      console.log("[Mapa] Overpass respondió:", res.status);
 
       if (res.ok) {
         const data = await res.json();
+        console.log("[Mapa] Elementos recibidos:", data.elements?.length || 0);
+
         const resultados = (data.elements || [])
           .map((el: { id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> }) => {
             const elLat = el.lat || el.center?.lat;
@@ -152,9 +159,11 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
           .sort((a: HospitalLocal, b: HospitalLocal) => (a.distanciaKm || 0) - (b.distanciaKm || 0))
           .slice(0, 50);
 
+        console.log("[Mapa] Hospitales procesados:", resultados.length);
         setHospitalesLocales(resultados);
       }
-    } catch {
+    } catch (err) {
+      console.error("[Mapa] Error al buscar hospitales:", err);
       // Si Overpass no responde, se muestran solo los de la base
     }
     setBuscandoHospitales(false);
@@ -216,7 +225,7 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
   return (
     <div className="space-y-3">
       {/* Estado de ubicación */}
-      <div className="flex items-center gap-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         {buscando ? (
           <span className="flex items-center gap-1.5 text-navy-500">
             <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400" />
@@ -233,6 +242,27 @@ export function MapaHospitales({ hospitales }: MapaHospitalesProps) {
             {errorGPS}
           </span>
         )}
+
+        {/* Estado de búsqueda de hospitales locales */}
+        {buscandoHospitales && (
+          <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-purple-400" />
+            Buscando hospitales de tu zona...
+          </span>
+        )}
+        {!buscandoHospitales && ubicacionReal && hospitalesLocales.length > 0 && (
+          <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
+            <span className="h-2 w-2 rounded-full bg-purple-500" />
+            {hospitalesLocales.length} hospitales encontrados en tu zona
+          </span>
+        )}
+        {!buscandoHospitales && ubicacionReal && hospitalesLocales.length === 0 && (
+          <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            No se encontraron hospitales cercanos — OpenStreetMap no respondió
+          </span>
+        )}
+
         {!ubicacionReal && !buscando && (
           <button
             onClick={() => { setBuscando(true); obtenerUbicacion(); }}
