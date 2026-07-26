@@ -614,7 +614,16 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
   // Esto resuelve el caso donde Textract lee todo en una sola etiqueta "NOMBRE"
   // y devuelve "JUAN CARLOS GARCIA LOPEZ" sin separar apellidos.
   if (datos.nombre && !datos.apellidoPaterno) {
-    const partes = datos.nombre.trim().split(/\s+/);
+    // Limpiar palabras que no son parte de un nombre de persona
+    // (Textract a veces captura texto del encabezado del documento)
+    const palabrasBasura = /\b(ESTADOS|UNIDOS|MEXICANOS|DEPARTAMENTO|DEPARTAMENT|SECRETARIA|GOBERNACION|REGISTRO|NACIONAL|POBLACION|REPUBLICA|GOBIERNO|FEDERAL|INSTITUTO|ELECTORAL|CREDENCIAL|CLAVE|UNICA|EST|MEX|MX)\b/gi;
+    let nombreLimpio = datos.nombre.replace(palabrasBasura, "").replace(/\s+/g, " ").trim();
+
+    // Si después de limpiar quedó vacío, usar el original
+    if (nombreLimpio.length < 2) nombreLimpio = datos.nombre;
+
+    const partes = nombreLimpio.split(/\s+/).filter(p => p.length > 1);
+
     if (partes.length >= 3) {
       // Si tenemos CURP, usarla para encontrar dónde empieza el apellido
       if (datos.curp) {
@@ -623,26 +632,25 @@ function extraerDatosUniversal(lineas: string[], textoCompleto: string) {
         if (indiceApellido >= 0 && indiceApellido < partes.length) {
           datos.apellidoPaterno = partes[indiceApellido];
           if (indiceApellido + 1 < partes.length) {
-            // Verificar si la siguiente parte es apellido materno usando 3ra letra de CURP
             datos.apellidoMaterno = partes[indiceApellido + 1];
           }
           datos.nombre = partes.filter((_, i) => i !== indiceApellido && i !== indiceApellido + 1).join(" ");
         } else {
-          // CURP no coincide, asumir: últimos 2 son apellidos, el resto nombre
+          // CURP no coincide, asumir: últimos 2 son apellidos
           datos.apellidoMaterno = partes[partes.length - 1];
           datos.apellidoPaterno = partes[partes.length - 2];
           datos.nombre = partes.slice(0, partes.length - 2).join(" ");
         }
       } else {
-        // Sin CURP: asumir que los últimos 2 palabras son apellidos
-        // (formato más universal: "NOMBRE APELLIDO1 APELLIDO2")
+        // Sin CURP: últimos 2 palabras son apellidos
         datos.apellidoMaterno = partes[partes.length - 1];
         datos.apellidoPaterno = partes[partes.length - 2];
         datos.nombre = partes.slice(0, partes.length - 2).join(" ");
       }
     } else if (partes.length === 2) {
-      // Solo 2 palabras: una es nombre, otra apellido
       datos.apellidoPaterno = partes[partes.length - 1];
+      datos.nombre = partes[0];
+    } else if (partes.length === 1) {
       datos.nombre = partes[0];
     }
   }
