@@ -308,3 +308,55 @@ El error "Sin configuracion de base de datos" ocurria porque Amplify expone las 
 | Accesibilidad | Lector de voz, skip links, ARIA, reduced motion, high contrast |
 | Idiomas | 2 (espanol/ingles con selector) |
 | Temas | 2 (claro/oscuro) |
+
+
+---
+
+## Ultimas mejoras — Domingo 27 de julio (dia de entrega)
+
+### OCR mejorado para documentos internacionales
+
+- Reconoce etiqueta **"APELLIDOS:"** (plural) de cédulas colombianas y pasaportes, y separa en apellido 1 + apellido 2
+- Reconoce **"NOMBRES:"** como campo independiente de apellidos
+- Detecta fechas con mes en texto: "12 - ABRIL - 1996", "21 - SEP - 1946"
+- Detecta género con formato corto: "SEXO: M" / "SEXO: F"
+- Filtra palabras institucionales que Textract captura del encabezado (ESTADOS, UNIDOS, MEXICANOS, DEPARTAMENTO, etc.)
+- Usa la CURP para validar el orden de apellido/nombre cuando el texto viene junto
+- Post-procesamiento final que separa nombre de apellidos si todo quedó en un solo campo
+
+### Formulario de pacientes actualizado
+
+- **"Apellido Paterno/Materno"** cambiado a **"Apellido 1 / Apellido 2"** (mas universal, funciona para cualquier pais)
+- Nuevo campo **"Tipo de documento"** con opciones: CURP, INE/IFE, Cédula, Pasaporte, DNI, NIE, Licencia, Acta de nacimiento, Otro
+- Campo **"Número de identificación"** genérico (reemplaza el campo fijo de CURP)
+- El OCR auto-detecta el tipo de documento y selecciona la opción correcta
+
+### OCR en Triage con doble opcion de entrada
+
+- Botón **"Tomar foto"** (cámara directa — para paramédicos en campo)
+- Botón **"Adjuntar"** (galería / archivos / PDF — para documentos digitales)
+
+### Creditos AWS ganados
+
+| Actividad | Creditos |
+|-----------|----------|
+| Crear base de datos RDS | $20 |
+| Configurar AWS Budgets | $20 |
+| Lanzar instancia EC2 | $20 |
+| Free Tier | $100 |
+| **Total** | **$160 USD** |
+
+### Estado final para la entrega
+
+| Metrica | Valor |
+|---------|-------|
+| URL en produccion | https://main.d1sjnmmlrw08mc.amplifyapp.com |
+| Servicios AWS | 8 |
+| Commits totales | 43 |
+| Paginas/rutas | 27 (estáticas + dinámicas) |
+| API routes | 6 (/api/ocr, /api/voz, /api/fotos, /api/notificar, /api/traducir, /api/hospitales-cercanos) |
+| Base de datos | Amazon RDS PostgreSQL conectada (badge verde) |
+| Build | 0 errores TypeScript |
+| Documentacion | README, bitacora, entrega, auditoria, legales |
+| Seguridad | CSP, HSTS, rate limiting, validacion, headers completos |
+| Accesibilidad | Voz neural, modo oscuro, idiomas, ARIA, skip links |
