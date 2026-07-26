@@ -218,3 +218,55 @@ Página dedicada `/mi-expediente` para cuando el paciente o su familia accede:
 - **Auditoria de seguridad** con pruebas automatizadas verificadas
 - **Documentacion legal** completa (privacidad, cookies, terminos)
 - **Accesibilidad:** lector de voz, skip links, focus visible, reduced motion, alto contraste, ARIA labels
+
+
+---
+
+## Sesion 5 — Domingo 26 de julio (dia 7 del hackathon, ultimo dia)
+
+### Servicios AWS agregados
+
+| Servicio | Funcion | Free Tier |
+|----------|---------|-----------|
+| **Amazon Polly** | Voz neural humana (Lupe es-MX, Ruth en-US) para lectura accesible | 1M caracteres/mes |
+| **Amazon S3** | Almacenamiento de fotos del triage en la nube | 5 GB |
+| **Amazon SNS** | SMS al familiar cuando se canaliza al paciente | 100 SMS/mes |
+| **Amazon Translate** | Traduccion de expedientes a cualquier idioma | 2M caracteres/mes |
+
+### Total de servicios AWS: 8
+
+1. Amplify (hosting)
+2. Textract (OCR documentos)
+3. Rekognition (deteccion facial)
+4. RDS PostgreSQL (base de datos)
+5. Polly (voz neural)
+6. S3 (almacenamiento de fotos)
+7. SNS (notificaciones SMS)
+8. Translate (traduccion multilingue)
+
+### Funcionalidades agregadas
+
+- **Amazon Polly integrado al lector de voz:** reemplaza la voz robotica del navegador por voces neurales de AWS. Lupe (espanol mexicano) y Ruth (ingles). Con fallback automatico a la voz del navegador si Polly no responde.
+- **API /api/fotos:** sube las fotos del triage a S3 para que el hospital las vea desde cualquier dispositivo antes de que llegue el paciente.
+- **API /api/notificar:** envia SMS al familiar con datos de canalizacion (hospital, direccion, gravedad). Formato E.164, normaliza numeros mexicanos. Tipo "Transactional" para entregas prioritaria en emergencias.
+- **API /api/traducir:** traduce texto a 13 idiomas. Detecta idioma origen automaticamente. Caso de uso: expediente traducido para seguros internacionales o pacientes extranjeros.
+- **Exportar PDF del triage:** boton "Exportar PDF" en el resultado del triage. Genera documento profesional con gravedad, datos del paciente, hospital, GPS, descargo legal. Funciona sin servidor (window.print con HTML formateado).
+- **Boton "Como Llegar":** despues del resultado del triage, seccion con botones para Google Maps y Waze. Abre la app de navegacion con la ruta al hospital recomendado.
+- **PWA preparada pero desactivada:** el manifest.json existe con shortcuts a Triage Rapido y Emergencia Extrema. El service worker fue implementado y luego removido por decision de proteccion de propiedad intelectual. El script actual desregistra cualquier SW viejo y bloquea el prompt de instalacion. La funcion queda documentada y lista para activar en produccion cuando se firme un acuerdo de uso.
+
+### Decisiones de proteccion de propiedad intelectual
+
+- **Service worker eliminado:** aunque estaba implementado con estrategia Network First y pre-cache del shell, se removio porque permite que alguien que visite la demo conserve una copia funcional offline del frontend. En una demo publica eso es un riesgo de apropiacion.
+- **Prompt de instalacion bloqueado:** el evento `beforeinstallprompt` se cancela explicitamente.
+- **Manifest en display: "browser":** impide que el navegador ofrezca instalar la app como standalone.
+- **Desregistro de SW viejos:** si alguien visitó la app cuando el SW estaba activo, el script actual lo desregistra al volver a cargar.
+
+### Nota para produccion
+
+La funcionalidad PWA offline es critica para el uso real: un paramedico en una zona rural puede no tener senal. Para activarla:
+1. Restaurar `public/sw.js` desde el historial de git (commit 3f5b4a1)
+2. Cambiar `display: "browser"` a `display: "standalone"` en manifest.json
+3. Reemplazar el script de desregistro por el de registro en layout.tsx
+4. Firmar acuerdo de licencia con la organizacion que despliega
+
+Estos tres archivos son los unicos que cambian. El resto de la app ya esta preparada.
