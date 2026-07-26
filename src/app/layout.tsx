@@ -55,15 +55,14 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Bloquear instalación como app
+              window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); });
+              // Si hay un service worker viejo de una versión anterior, eliminarlo
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js').catch(() => {});
+                navigator.serviceWorker.getRegistrations().then((regs) => {
+                  regs.forEach((r) => r.unregister());
                 });
               }
-              // Bloquear el prompt de instalación de PWA
-              window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-              });
             `,
           }}
         />
