@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, Loader2, CheckCircle2, X, Zap, AlertTriangle } from "lucide-react";
+import { Camera, Loader2, CheckCircle2, X, Zap, AlertTriangle, FileUp } from "lucide-react";
 
 interface DatosExtraidos {
   nombre?: string;
@@ -41,6 +41,7 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
   const [modoDemo, setModoDemo] = useState(false);
   const [diagnostico, setDiagnostico] = useState<{ tipo?: string; mensaje?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputGaleriaRef = useRef<HTMLInputElement>(null);
 
   const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
@@ -114,6 +115,13 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
 
   return (
     <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-3 dark:border-blue-500/40 dark:bg-blue-500/10">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-navy-800 dark:text-white">
+        <Zap className="h-3.5 w-3.5 text-blue-500" />
+        Identificar paciente con documento
+      </p>
+      <p className="mb-3 text-[10px] text-blue-700 dark:text-navy-400">
+        Foto de CURP, pasaporte, cédula o cualquier ID — extrae nombre y datos en segundos. Powered by Amazon Textract.
+      </p>
       <input
         ref={fileInputRef}
         type="file"
@@ -122,26 +130,42 @@ export function OCRDocumentoTriage({ onDatosExtraidos, onFotoRostro }: OCRDocume
         className="hidden"
         onChange={handleFoto}
       />
+      <input
+        ref={fileInputGaleriaRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={handleFoto}
+      />
 
       {estado === "idle" && (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="flex w-full items-center gap-3 text-left transition-all active:scale-[0.98]"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-500/20">
-            <Camera className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-navy-800 dark:text-white">
-              <Zap className="mr-1 inline h-3.5 w-3.5 text-blue-500" />
-              Identificar con foto de documento
-            </p>
-            <p className="text-[10px] text-blue-700 dark:text-navy-400">
-              CURP, acta o credencial — extrae nombre y edad en segundos. Powered by Amazon Textract.
-            </p>
-          </div>
-        </button>
+        <div className="flex w-full gap-2">
+          {/* Tomar foto con cámara */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-1 items-center gap-2 rounded-lg border-2 border-blue-300 bg-blue-50 px-3 py-2.5 text-left transition-all hover:bg-blue-100 active:scale-[0.98] dark:border-blue-500/30 dark:bg-blue-500/10 dark:hover:bg-blue-500/20"
+          >
+            <Camera className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-navy-800 dark:text-white">Tomar foto</p>
+              <p className="text-[9px] text-navy-500 dark:text-navy-400">Cámara</p>
+            </div>
+          </button>
+
+          {/* Subir archivo (galería, PDF, imagen guardada) */}
+          <button
+            type="button"
+            onClick={() => fileInputGaleriaRef.current?.click()}
+            className="flex flex-1 items-center gap-2 rounded-lg border-2 border-purple-300 bg-purple-50 px-3 py-2.5 text-left transition-all hover:bg-purple-100 active:scale-[0.98] dark:border-purple-500/30 dark:bg-purple-500/10 dark:hover:bg-purple-500/20"
+          >
+            <FileUp className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-navy-800 dark:text-white">Adjuntar</p>
+              <p className="text-[9px] text-navy-500 dark:text-navy-400">Galería / archivo</p>
+            </div>
+          </button>
+        </div>
       )}
 
       {estado === "procesando" && (
