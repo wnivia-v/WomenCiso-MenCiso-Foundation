@@ -33,7 +33,31 @@ function crearCliente(): PrismaClient {
     throw new Error("DATABASE_URL no está definida");
   }
 
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg({
+    connectionString,
+
+    // Tope de conexiones por instancia de cómputo.
+    //
+    // La instancia db.t4g.micro tiene 1 GB de RAM y admite del orden de 100
+    // conexiones simultáneas. Amplify puede levantar varias instancias de
+    // cómputo en paralelo bajo carga, y cada una abriría su propio pool. Con el
+    // valor por defecto, unas pocas instancias concurrentes agotan el límite del
+    // servidor y las consultas empiezan a fallar con "too many connections" —
+    // que en esta app significa que la pantalla de camas disponibles deja de
+    // funcionar justo cuando hay más demanda.
+    //
+    // Con 5 por instancia, harían falta 20 instancias concurrentes para llegar
+    // al límite, lo que da margen suficiente.
+    max: 5,
+
+    // Cierra conexiones ociosas para liberar cupo en el servidor.
+    idleTimeoutMillis: 30_000,
+
+    // Si no hay conexión libre en 10 segundos, falla rápido en lugar de dejar
+    // la petición esperando indefinidamente.
+    connectionTimeoutMillis: 10_000,
+  });
+
   return new PrismaClient({ adapter });
 }
 

@@ -158,3 +158,63 @@ Página dedicada `/mi-expediente` para cuando el paciente o su familia accede:
 - Documento de entrega creado: `docs/ENTREGA-HACKATHON.md`
 - .gitignore actualizado para excluir logs de desarrollo
 - Build verificado: 22/22 paginas, 0 errores TypeScript, exit code 0
+
+
+---
+
+## Sesion 4 — Sabado 25 de julio (dia 6 del hackathon, sesion continua)
+
+### Servicios AWS integrados
+
+| Servicio | Funcion | Evidencia |
+|----------|---------|-----------|
+| **AWS Amplify** | Hosting SSR con deploy automatico desde GitHub | URL publica: `main.d1sjnmmlrw08mc.amplifyapp.com` |
+| **Amazon Textract** | OCR universal de documentos (CURP, pasaportes, cedulas, licencias de cualquier pais) | API route `/api/ocr` con `AnalyzeDocument` y fallback a `DetectDocumentText` |
+| **Amazon Rekognition** | Deteccion facial en documentos para identificacion de pacientes NN | `DetectFaces` con estimacion de edad y genero |
+| **Amazon RDS PostgreSQL** | Base de datos relacional en la nube con datos reales | Instancia `womenciso-db.cg1essocqcxf.us-east-1.rds.amazonaws.com`, schema migrado, datos seed insertados |
+
+### Funcionalidades agregadas
+
+- **OCR en Triage (Paso 2):** el paramedico toma foto del documento del paciente y los datos se llenan automaticamente sin confirmacion intermedia (cada clic en una emergencia son segundos). Si el documento es de un adulto (>18 anos), no aplica la edad.
+- **Sistema NN (No Name):** boton visible para pacientes sin identificacion. Asigna ID temporal tipo `NN-20260725-1430` con fecha y hora. Se coteja despues con documentos o biometria.
+- **Modo oscuro y claro:** toggle de tema con persistencia en localStorage. Colores de acento (rojo triage, naranja gravedad) se preservan intactos.
+- **Selector de idioma (ES/EN):** dropdown con banderas. Traducciones para navegacion, login, triage, dashboard, gravedad, OCR.
+- **Consentimiento de cookies:** banner granular con 3 categorias. Rechazar tiene el mismo peso visual que aceptar. Versionado (re-pregunta si cambia la politica).
+- **Paginas legales:** privacidad (LFPDPPP con 9 secciones), cookies (inventario completo de 5 claves), terminos (descargo medico, propiedad intelectual, jurisdiccion mexicana).
+- **Base de datos real:** Dashboard, Emergencias, Hospitales y Pacientes leen de Amazon RDS. Indicador verde "Amazon RDS" o ambar "Datos de respaldo" visible en cada pantalla.
+- **Banner de hackathon:** barra superior con degradado navy que identifica el concurso, Codigo Facilito, Kiro y AWS.
+- **Creditos actualizados:** derechos reservados Wladimir Nivia en toda la app.
+
+### Mejoras de seguridad (segunda auditoria)
+
+| Mejora | Detalle |
+|--------|---------|
+| Rate limiting en `/api/ocr` | 10 peticiones/minuto por IP. Devuelve 429 con `Retry-After`. |
+| Validacion de contenido | Verifica firma de archivo (magic bytes) antes de enviar a Textract. Rechaza con 415 si no es JPEG/PNG/TIFF. |
+| Validacion de tamano pre-parseo | Verifica `Content-Length` ANTES de leer el body. Un payload enorme no llega a consumir memoria. |
+| Redaccion de errores | Los mensajes de AWS y PostgreSQL nunca llegan al navegador. Solo va un motivo categorizado. Los detalles quedan en CloudWatch. |
+| Pool de conexiones configurado | Max 5 por instancia, idle timeout 30s, connection timeout 10s. Evita agotar la instancia db.t4g.micro. |
+| Timeout de AWS | 15s request + 5s connection. Evita que peticiones colgadas bloqueen la instancia de computo. |
+| CSP actualizada | Agrega `frame-ancestors 'none'` y `upgrade-insecure-requests`. |
+| Cache desactivada en API | `Cache-Control: no-store` para que respuestas con datos personales no queden en proxies ni caches de navegador. |
+| Credenciales verificadas | `.env` no rastreado por git. La contrasena y el endpoint RDS no aparecen en ningun commit del historial. |
+
+### Bugs corregidos
+
+- Mapa de Leaflet se sobreponia al chat y otras secciones (z-index containment)
+- OCR mostraba datos ficticios sin indicarlo (ahora dice explicitamente "Datos de relleno" con aviso ambar)
+- Edad calculada incorrectamente cuando el documento era de un adulto (ahora solo aplica si 0-18)
+- Boton NN invisible en la pantalla de triage (ahora siempre visible con contraste fuerte)
+- Texto de recomendaciones/911 invisible en modo oscuro (clases dark: explicitas)
+- Triage Rapido casi invisible en modo oscuro en la pantalla de login (clase CSS propia con superficie solida)
+- Banner superior tapaba el sidebar al abrirse en movil (z-index corregido a z-30)
+
+### Estado final del proyecto
+
+- **27 rutas** (22 estaticas + 5 dinamicas incluyendo `/api/ocr`)
+- **Build limpio:** 0 errores TypeScript, exit code 0
+- **4 servicios de AWS** conectados
+- **Base de datos real** con migracion y seed
+- **Auditoria de seguridad** con pruebas automatizadas verificadas
+- **Documentacion legal** completa (privacidad, cookies, terminos)
+- **Accesibilidad:** lector de voz, skip links, focus visible, reduced motion, alto contraste, ARIA labels

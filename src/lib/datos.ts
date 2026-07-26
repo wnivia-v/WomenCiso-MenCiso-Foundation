@@ -22,7 +22,38 @@ export type OrigenDatos = "rds" | "respaldo";
 export interface Resultado<T> {
   datos: T;
   origen: OrigenDatos;
+  /** Motivo redactado, apto para mostrarse en la interfaz. */
   error?: string;
+}
+
+/**
+ * Convierte un error de base de datos en un motivo publicable.
+ *
+ * Los mensajes de PostgreSQL son descriptivos de más para exponerlos: un fallo
+ * de autenticación devuelve el nombre de la base, el usuario y el host que se
+ * intentó, por ejemplo `no pg_hba.conf entry for host "203.0.113.5", user
+ * "postgres", database "womenciso_menciso"`. Ese texto termina en el HTML que
+ * recibe el navegador, y le confirma a cualquiera el nombre de la base y del
+ * usuario. El mensaje íntegro se registra en el servidor, donde sí es útil.
+ */
+function motivoPublicable(error: unknown, contexto: string): string {
+  const nombre = (error as { name?: string })?.name || "";
+  const codigo = (error as { code?: string })?.code || "";
+
+  console.error(`[datos] Fallo al consultar ${contexto}:`, {
+    nombre,
+    codigo,
+    mensaje: (error as { message?: string })?.message,
+  });
+
+  // Códigos de Prisma: P1001 sin alcance, P1002 tiempo agotado,
+  // P1010 acceso denegado, P2021 tabla inexistente.
+  if (codigo === "P1001" || codigo === "P1002") return "La base de datos no responde";
+  if (codigo === "P1010") return "Credenciales rechazadas por la base de datos";
+  if (codigo === "P2021" || codigo === "P2022") return "Falta ejecutar las migraciones";
+  if (nombre.includes("Initialization")) return "No se pudo inicializar la conexión";
+
+  return "Error al consultar la base de datos";
 }
 
 /* ============================================================
@@ -168,8 +199,11 @@ export async function obtenerHospitales(): Promise<Resultado<HospitalVista[]>> {
       origen: "rds",
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Error desconocido";
-    return { datos: HOSPITALES_RESPALDO, origen: "respaldo", error: msg };
+    return {
+      datos: HOSPITALES_RESPALDO,
+      origen: "respaldo",
+      error: motivoPublicable(e, "hospitales"),
+    };
   }
 }
 
@@ -308,8 +342,11 @@ export async function obtenerEmergencias(): Promise<Resultado<EmergenciaVista[]>
       origen: "rds",
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Error desconocido";
-    return { datos: EMERGENCIAS_RESPALDO, origen: "respaldo", error: msg };
+    return {
+      datos: EMERGENCIAS_RESPALDO,
+      origen: "respaldo",
+      error: motivoPublicable(e, "emergencias"),
+    };
   }
 }
 
@@ -432,8 +469,11 @@ export async function obtenerPacientes(): Promise<Resultado<PacienteVista[]>> {
       origen: "rds",
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Error desconocido";
-    return { datos: PACIENTES_RESPALDO, origen: "respaldo", error: msg };
+    return {
+      datos: PACIENTES_RESPALDO,
+      origen: "respaldo",
+      error: motivoPublicable(e, "pacientes"),
+    };
   }
 }
 
@@ -505,7 +545,10 @@ export async function obtenerEstadisticas(): Promise<Resultado<EstadisticasVista
       origen: "rds",
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Error desconocido";
-    return { datos: ESTADISTICAS_RESPALDO, origen: "respaldo", error: msg };
+    return {
+      datos: ESTADISTICAS_RESPALDO,
+      origen: "respaldo",
+      error: motivoPublicable(e, "estadísticas"),
+    };
   }
 }

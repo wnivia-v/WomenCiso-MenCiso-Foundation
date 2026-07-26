@@ -24,23 +24,51 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
           // Bloquea APIs del navegador que no se usan (reduce superficie de ataque).
           { key: "Permissions-Policy", value: "camera=(self), microphone=(), usb=(), payment=()" },
-          // Content-Security-Policy: permite scripts inline (necesarios para Next.js),
-          // pero bloquea frames externos, objetos, y restringe conexiones.
+          // Content-Security-Policy.
+          //
+          // `unsafe-inline` y `unsafe-eval` en script-src son necesarios para el
+          // runtime de Next.js, que inyecta scripts inline para la hidratación.
+          // Debilitan la protección contra XSS, así que la defensa principal
+          // sigue siendo que React escapa todo el contenido por defecto y que en
+          // el código no hay dangerouslySetInnerHTML, eval ni innerHTML.
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https://*.tile.openstreetmap.org blob:",
+              // data: y blob: se necesitan para las fotos capturadas con la
+              // cámara, que se manejan en memoria antes de enviarse.
+              "img-src 'self' data: blob: https://*.tile.openstreetmap.org",
               "font-src 'self'",
               "connect-src 'self' https://*.tile.openstreetmap.org",
               "frame-src 'none'",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
+              // Equivalente moderno de X-Frame-Options. Se declara además del
+              // header porque CSP tiene precedencia en navegadores actuales y
+              // X-Frame-Options no cubre todos los casos de anidamiento.
+              "frame-ancestors 'none'",
+              // Promueve cualquier subrecurso http:// a https:// en lugar de
+              // bloquearlo, evitando contenido mixto.
+              "upgrade-insecure-requests",
             ].join("; "),
           },
+        ],
+      },
+      {
+        // Las respuestas de la API no deben quedar en caché.
+        //
+        // /api/ocr devuelve datos extraídos de un documento de identidad. Sin
+        // esta cabecera, un proxy intermedio o la caché del navegador podría
+        // conservar la respuesta y servirla a otra persona en un equipo
+        // compartido, que es justo el escenario de un puesto de urgencias.
+        source: "/api/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, max-age=0" },
+          { key: "Pragma", value: "no-cache" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
         ],
       },
     ];

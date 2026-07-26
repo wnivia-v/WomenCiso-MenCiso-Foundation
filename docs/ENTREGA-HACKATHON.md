@@ -35,8 +35,19 @@ Plataforma web que resuelve tres necesidades criticas en la atencion de ninos y 
 - Desarrollo iterativo con ciclos de feedback documentados en `docs/bitacora-proyecto.md`
 
 ### Servicios de infraestructura
-- Cloudflare Tunnel (para testing remoto en dispositivos moviles)
-- PostgreSQL (schema definido, preparado para AWS RDS en produccion)
+- **AWS Amplify** — Hosting SSR con deploy continuo desde GitHub
+- **Amazon Textract** — OCR universal de documentos de identidad
+- **Amazon Rekognition** — Deteccion facial y estimacion de edad
+- **Amazon RDS PostgreSQL** — Base de datos relacional en la nube
+- **Cloudflare Tunnel** — Testing remoto en dispositivos moviles durante desarrollo
+
+---
+
+## URL de la aplicacion desplegada
+
+**https://main.d1sjnmmlrw08mc.amplifyapp.com**
+
+Desplegada en AWS Amplify con deploy automatico desde GitHub. HTTPS incluido.
 
 ---
 
@@ -123,6 +134,22 @@ npm run start
 ---
 
 ## Funcionalidades destacadas para evaluacion
+
+### Uso de AWS (4 servicios)
+- **Amplify:** hosting SSR con deploy automatico, HTTPS gratuito, URL publica permanente
+- **Textract:** OCR que lee documentos de cualquier pais (CURP, pasaportes MRZ, cedulas, licencias, DNI)
+- **Rekognition:** detecta el rostro en el documento para identificacion visual de pacientes NN
+- **RDS PostgreSQL:** base de datos real con migraciones y datos. Cada pantalla muestra indicador "Amazon RDS" verificable
+
+### Seguridad (nivel produccion)
+- Auditoria documentada en `docs/AUDITORIA-SEGURIDAD.md`
+- Content-Security-Policy con frame-ancestors, upgrade-insecure-requests
+- HSTS, X-Frame-Options DENY, Permissions-Policy restrictiva
+- Rate limiting en API de OCR (10/min por IP)
+- Validacion de contenido real (magic bytes, no solo extension)
+- Mensajes de error redactados (nunca se filtra ARN, endpoint o credenciales al cliente)
+- Pool de conexiones configurado contra agotamiento
+- Timeouts en llamadas a AWS
 
 ### Innovacion
 - Clasificacion automatica de gravedad basada en criterios medicos reales (ABA)

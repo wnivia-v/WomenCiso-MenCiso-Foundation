@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TextractClient, AnalyzeDocumentCommand, DetectDocumentTextCommand } from "@aws-sdk/client-textract";
 import { RekognitionClient, DetectFacesCommand } from "@aws-sdk/client-rekognition";
+import { verificarLimite, obtenerIP } from "@/lib/limite-peticiones";
 
 /**
  * API Route: POST /api/ocr
@@ -23,39 +24,184 @@ import { RekognitionClient, DetectFacesCommand } from "@aws-sdk/client-rekogniti
  * - El procesamiento ocurre en el servidor, nunca en el cliente
  */
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB - límite de Textract
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB — límite de Textract
+
+/**
+ * Tope del cuerpo de la petición. El base64 infla los bytes cerca de un 37%,
+ * así que 7 MB deja margen para una imagen de 5 MB más el prefijo data URI.
+ */
+const MAX_BODY_SIZE = 7 * 1024 * 1024;
+
+/** Peticiones permitidas por IP en la ventana. Cada una cuesta dinero en AWS. */
+const LIMITE_PETICIONES = 10;
+const VENTANA_MS = 60_000;
+
+/** Tiempo máximo de espera a AWS, para no dejar peticiones colgadas. */
+const TIMEOUT_AWS_MS = 15_000;
+
+/**
+ * Firmas de archivo de los formatos que Textract acepta.
+ * Se valida el contenido real en lugar de confiar en el tipo declarado: el
+ * prefijo `data:image/png` lo escribe el cliente y puede mentir. Sin esta
+ * comprobación, cualquier secuencia de bytes llegaría a Textract y generaría
+ * una llamada facturable que va a fallar de todos modos.
+ */
+const FIRMAS_IMAGEN: { nombre: string; bytes: number[] }[] = [
+  { nombre: "JPEG", bytes: [0xff, 0xd8, 0xff] },
+  { nombre: "PNG", bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { nombre: "TIFF (LE)", bytes: [0x49, 0x49, 0x2a, 0x00] },
+  { nombre: "TIFF (BE)", bytes: [0x4d, 0x4d, 0x00, 0x2a] },
+];
+
+function esImagenValida(buffer: Buffer): boolean {
+  return FIRMAS_IMAGEN.some((firma) =>
+    firma.bytes.every((byte, i) => buffer[i] === byte)
+  );
+}
+
+/**
+ * Clasifica un error de AWS en una categoría publicable.
+ *
+ * No se devuelve el mensaje original al cliente: los errores de AWS suelen
+ * incluir el ARN completo del rol, que expone el número de cuenta y el nombre
+ * del rol. Por ejemplo, un fallo de permisos devuelve algo como
+ * "User: arn:aws:sts::<cuenta>:assumed-role/<rol>/... is not authorized...".
+ * Entregar eso a cualquiera que invoque la ruta es regalar reconocimiento de
+ * la infraestructura. El mensaje completo se registra en CloudWatch, donde solo
+ * lo ve quien administra la cuenta.
+ */
+function clasificarError(error: unknown): { categoria: string; publico: string } {
+  const nombre = (error as { name?: string })?.name || "";
+
+  if (nombre.includes("AccessDenied") || nombre.includes("UnrecognizedClient")) {
+    return {
+      categoria: nombre,
+      publico: "El servicio de lectura no está autorizado en este entorno.",
+    };
+  }
+  if (nombre.includes("Credentials") || nombre.includes("Token")) {
+    return {
+      categoria: nombre,
+      publico: "El servicio de lectura no tiene credenciales configuradas.",
+    };
+  }
+  if (nombre.includes("Throttling") || nombre.includes("LimitExceeded")) {
+    return {
+      categoria: nombre,
+      publico: "El servicio de lectura está saturado. Intenta en unos segundos.",
+    };
+  }
+  if (nombre.includes("InvalidParameter") || nombre.includes("UnsupportedDocument")) {
+    return {
+      categoria: nombre,
+      publico: "El documento no se pudo interpretar. Prueba con otra foto.",
+    };
+  }
+  if (nombre === "TimeoutError" || nombre.includes("Timeout")) {
+    return {
+      categoria: "Timeout",
+      publico: "El servicio de lectura tardó demasiado en responder.",
+    };
+  }
+  return { categoria: nombre || "ErrorDesconocido", publico: "El servicio de lectura no respondió." };
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { imageBase64 } = body;
-
-    if (!imageBase64) {
+    // --- Límite de tasa ---
+    // Va primero, antes de leer el cuerpo: si se rechaza la petición, no tiene
+    // sentido haber gastado memoria en recibir megabytes de datos.
+    const ip = obtenerIP(request.headers);
+    const limite = verificarLimite(ip, LIMITE_PETICIONES, VENTANA_MS);
+    if (!limite.permitido) {
       return NextResponse.json(
-        { error: "No se proporcionó imagen" },
-        { status: 400 }
+        {
+          error: `Demasiadas solicitudes. Espera ${limite.reintentarEn} segundos.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limite.reintentarEn),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
+    }
+
+    // --- Tamaño del cuerpo, ANTES de parsearlo ---
+    // La validación de tamaño tiene que ocurrir aquí y no después de
+    // `request.json()`. Parsear primero significa cargar todo el cuerpo en
+    // memoria: un cuerpo de cientos de megabytes agotaría la memoria de la
+    // instancia antes de llegar a cualquier comprobación.
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && Number(contentLength) > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { error: "La imagen excede el tamaño máximo permitido." },
+        { status: 413 }
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Cuerpo de la petición inválido." }, { status: 400 });
+    }
+
+    const imageBase64 = (body as { imageBase64?: unknown })?.imageBase64;
+
+    // Se valida el tipo explícitamente: sin esto, un valor no textual haría
+    // fallar `.replace()` más abajo con un error de ejecución.
+    if (typeof imageBase64 !== "string" || imageBase64.length === 0) {
+      return NextResponse.json({ error: "No se proporcionó imagen." }, { status: 400 });
+    }
+
+    if (imageBase64.length > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { error: "La imagen excede el tamaño máximo permitido." },
+        { status: 413 }
       );
     }
 
     // Extraer el base64 puro (quitar el prefijo data:image/...)
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, "base64");
 
-    // Validar tamaño
+    if (imageBuffer.length === 0) {
+      return NextResponse.json({ error: "La imagen está vacía o mal codificada." }, { status: 400 });
+    }
+
     if (imageBuffer.length > MAX_IMAGE_SIZE) {
       return NextResponse.json(
-        { error: "La imagen excede el tamaño máximo de 5MB" },
-        { status: 400 }
+        { error: "La imagen excede el tamaño máximo de 5 MB." },
+        { status: 413 }
+      );
+    }
+
+    // --- Verificar que el contenido sea realmente una imagen ---
+    if (!esImagenValida(imageBuffer)) {
+      return NextResponse.json(
+        { error: "El archivo no es una imagen válida (se admiten JPEG, PNG y TIFF)." },
+        { status: 415 }
       );
     }
 
     // Intentar siempre con Textract primero.
     // Si falla por credenciales (entorno local sin IAM Role), usar datos demo.
     try {
-      // Crear cliente de Textract
-      const textractClient = new TextractClient({
+      // Los tiempos de espera evitan que una llamada colgada a AWS mantenga
+      // ocupada la instancia de cómputo indefinidamente. Sin esto, unas pocas
+      // peticiones lentas simultáneas bastan para agotar la concurrencia.
+      const configuracionAWS = {
         region: process.env.AWS_REGION_TEXTRACT || "us-east-1",
-      });
+        requestHandler: {
+          requestTimeout: TIMEOUT_AWS_MS,
+          connectionTimeout: 5_000,
+        },
+        maxAttempts: 2,
+      };
+
+      const textractClient = new TextractClient(configuracionAWS);
 
       // Intentar primero con AnalyzeDocument (detecta formularios y tablas)
       // Si falla, caer a DetectDocumentText (solo texto)
@@ -117,9 +263,7 @@ export async function POST(request: NextRequest) {
     let fotoRostro: { detectado: boolean; boundingBox?: { top: number; left: number; width: number; height: number }; confianza?: number; edad?: { min: number; max: number }; generoDetectado?: string } = { detectado: false };
 
     try {
-      const rekognitionClient = new RekognitionClient({
-        region: process.env.AWS_REGION_TEXTRACT || "us-east-1",
-      });
+      const rekognitionClient = new RekognitionClient(configuracionAWS);
 
       const detectFacesCommand = new DetectFacesCommand({
         Image: { Bytes: imageBuffer },
@@ -176,34 +320,37 @@ export async function POST(request: NextRequest) {
     });
     } catch (awsError) {
       // Si Textract/Rekognition fallan, se cae a modo demo para que la app siga
-      // usable, pero se expone el motivo del fallo. Sin esto, un problema de
-      // permisos es indistinguible de un entorno local sin credenciales, y se
+      // usable, pero se indica el motivo. Sin ninguna señal, un problema de
+      // permisos es indistinguible de un entorno local sin credenciales y se
       // acaba depurando a ciegas.
       //
-      // Se devuelve el nombre y mensaje del error de AWS (p. ej.
-      // AccessDeniedException, CredentialsProviderError). Son identificadores de
-      // diagnóstico, no secretos.
-      const err = awsError as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
-      const diagnostico = {
-        tipo: err?.name || "DesconocidoError",
-        mensaje: err?.message || "Sin mensaje",
-        httpStatus: err?.$metadata?.httpStatusCode,
-      };
-      console.error("AWS no disponible, usando modo demo:", diagnostico);
+      // Al cliente va solo la categoría del error y un mensaje redactado. El
+      // detalle completo queda en CloudWatch: ver `clasificarError` para el
+      // razonamiento sobre por qué no se publica el mensaje original.
+      const { categoria, publico } = clasificarError(awsError);
+
+      console.error("AWS no disponible, usando modo demo:", {
+        categoria,
+        // El mensaje completo se registra solo del lado servidor.
+        detalle: (awsError as { message?: string })?.message,
+      });
 
       return NextResponse.json({
         success: true,
         mode: "demo",
         datos: obtenerDatosDemo(),
         fotoRostro: { detectado: false },
-        textoCompleto: "Modo demo — AWS Textract/Rekognition no respondió",
-        diagnostico,
+        textoCompleto: "Modo demo — el servicio de lectura no respondió",
+        diagnostico: { tipo: categoria, mensaje: publico },
       });
     }
   } catch (error) {
+    // El error interno no se propaga al cliente: un stack trace o un mensaje de
+    // biblioteca puede revelar rutas del sistema de archivos y versiones de
+    // dependencias, que sirven para buscar vulnerabilidades conocidas.
     console.error("Error en OCR:", error);
     return NextResponse.json(
-      { error: "Error al procesar la imagen. Intente de nuevo." },
+      { error: "Error al procesar la imagen. Intenta de nuevo." },
       { status: 500 }
     );
   }
