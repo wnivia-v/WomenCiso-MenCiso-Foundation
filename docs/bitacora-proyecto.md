@@ -171,7 +171,7 @@ Página dedicada `/mi-expediente` para cuando el paciente o su familia accede:
 | **AWS Amplify** | Hosting SSR con deploy automatico desde GitHub | URL publica: `main.d1sjnmmlrw08mc.amplifyapp.com` |
 | **Amazon Textract** | OCR universal de documentos (CURP, pasaportes, cedulas, licencias de cualquier pais) | API route `/api/ocr` con `AnalyzeDocument` y fallback a `DetectDocumentText` |
 | **Amazon Rekognition** | Deteccion facial en documentos para identificacion de pacientes NN | `DetectFaces` con estimacion de edad y genero |
-| **Amazon RDS PostgreSQL** | Base de datos relacional en la nube con datos reales | Instancia `womenciso-db.cg1essocqcxf.us-east-1.rds.amazonaws.com`, schema migrado, datos seed insertados |
+| **Amazon RDS PostgreSQL** | Base de datos relacional en la nube con datos reales | Instancia `womenciso-db.***.us-east-1.rds.amazonaws.com`, schema migrado, datos seed insertados |
 
 ### Funcionalidades agregadas
 
@@ -360,3 +360,51 @@ El error "Sin configuracion de base de datos" ocurria porque Amplify expone las 
 | Documentacion | README, bitacora, entrega, auditoria, legales |
 | Seguridad | CSP, HSTS, rate limiting, validacion, headers completos |
 | Accesibilidad | Voz neural, modo oscuro, idiomas, ARIA, skip links |
+
+
+---
+
+## Revision final pre-entrega — Lunes 27 de julio
+
+### Auditoria de seguridad pre-push
+
+| Verificacion | Resultado |
+|--------------|-----------|
+| `.gitignore` excluye `.env*`, `node_modules/`, `.next/`, `/build` | OK |
+| No hay claves AWS (AKIA*), tokens, ni API keys en el codigo | OK |
+| No hay `NEXT_PUBLIC_` que filtre datos sensibles al cliente | OK |
+| `next.config.ts` solo pasa `DATABASE_URL` al runtime del servidor | OK |
+| Endpoint de RDS redactado en documentacion (no publicar identificador de instancia) | OK |
+| No existe `amplify.yml` en el repo (configuracion en consola de AWS) | OK |
+| Schema de Prisma sin `url` hardcodeado (usa variable de entorno) | OK |
+| ARNs mencionados solo en comentarios explicativos, no como credenciales reales | OK |
+| Archivo `.env` no rastreado en git — confirmado ausente del historial | OK |
+| Contrasenas de demo (admin/admin, coord/coord) son intencionales y documentadas | OK |
+
+### Servicios AWS confirmados en produccion (8 total)
+
+| # | Servicio | Funcion | Evidencia en la app |
+|---|----------|---------|---------------------|
+| 1 | AWS Amplify | Hosting SSR + deploy continuo desde GitHub | URL publica activa con HTTPS |
+| 2 | Amazon RDS PostgreSQL | Base de datos relacional | Badge verde "Amazon RDS" en Dashboard, Emergencias, Hospitales, Pacientes |
+| 3 | Amazon Textract | OCR de documentos de identidad | Boton de camara en Paso 2 del Triage |
+| 4 | Amazon Rekognition | Deteccion facial + estimacion de edad | Foto del titular extraida del documento |
+| 5 | Amazon Polly | Voz neural (Lupe es-MX, Ruth en-US) | Lector de voz en toda la app |
+| 6 | Amazon S3 | Almacenamiento de fotos del triage | Fotos subidas a la nube para el hospital |
+| 7 | Amazon SNS | SMS al familiar del paciente | Notificacion automatica al canalizar |
+| 8 | Amazon Translate | Traduccion multilingue de expedientes | 13 idiomas soportados |
+
+### Estado de produccion
+
+- **URL:** https://main.d1sjnmmlrw08mc.amplifyapp.com
+- **Commits:** 45
+- **Build:** 0 errores TypeScript
+- **Base de datos:** Amazon RDS PostgreSQL conectada (instancia db.t4g.micro, us-east-1)
+- **Seguridad:** Auditoria completa, credenciales protegidas, headers de seguridad activos
+- **Proteccion IP:** Service worker removido, prompt de instalacion bloqueado, display: browser
+
+### Proyecto listo para entrega
+
+El repositorio esta limpio de credenciales y listo para push publico a GitHub.
+AWS Amplify hace deploy automatico al recibir el push en la rama `main`.
+Los jueces pueden acceder a la URL de produccion y verificar las 8 integraciones de AWS funcionando.
