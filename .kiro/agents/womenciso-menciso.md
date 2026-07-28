@@ -59,7 +59,7 @@ public/
 
 ## Contexto de Negocio
 - WomenCiso y MenCiso Foundation es la organización que presenta y protege la plataforma
-- La app atiende niños y adolescentes con quemaduras en México
+- La app atiende a personas con quemaduras en México de todas las edades: niños, niñas, adolescentes, adultos y adultos mayores
 - La plataforma está pensada para reutilizarse por varias fundaciones, no solo una
 - El sistema permite: triage rápido, canalización a hospitales, seguimiento de pacientes
 - La velocidad es crítica — en emergencias cada segundo cuenta

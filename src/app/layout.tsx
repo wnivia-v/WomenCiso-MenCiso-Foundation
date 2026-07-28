@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   title: "WomenCiso y MenCiso Foundation - Sistema de Atención a Quemados",
   description:
     "Sistema integral de atención, triage, canalización y seguimiento para pacientes con quemaduras. Una plataforma de WomenCiso y MenCiso Foundation.",
-  // Build de demostración: se comparte por túnel público para recibir feedback.
-  // Se bloquea la indexación para que la URL temporal no aparezca en buscadores
+  // Build de demostración desplegado en AWS Amplify con URL pública.
+  // Se bloquea la indexación para que la URL de demo no aparezca en buscadores
   // ni quede en caché de resultados con datos que parecen clínicos.
   robots: {
     index: false,

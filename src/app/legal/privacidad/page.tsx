@@ -100,10 +100,11 @@ export default function PrivacidadPage() {
           </p>
           <p className="mt-1 text-xs leading-relaxed text-red-700 dark:text-red-200">
             Los datos de salud son datos personales sensibles conforme al artículo 3
-            de la LFPDPPP, y la mayoría de los titulares en este sistema son niñas,
-            niños y adolescentes. Su tratamiento exige consentimiento expreso y por
-            escrito de quien ejerce la patria potestad o tutela, salvo en los
-            supuestos de urgencia médica descritos en la sección 4.
+            de la LFPDPPP. El sistema atiende a personas de todas las edades, y entre
+            los titulares hay niñas, niños y adolescentes: cuando el titular es menor
+            de edad, su tratamiento exige consentimiento expreso y por escrito de quien
+            ejerce la patria potestad o tutela, salvo en los supuestos de urgencia
+            médica descritos en la sección 4.
           </p>
         </div>
       </Seccion>

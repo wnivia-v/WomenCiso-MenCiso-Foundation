@@ -4,7 +4,7 @@ Registro de lo construido y corregido, para usar como guion del video de present
 
 ## Qué es el proyecto
 
-Sistema web presentado por **WomenCiso y MenCiso Foundation** para la atención de niños y adolescentes con quemaduras en México. La app resuelve tres necesidades: **triage rápido** de emergencias, **canalización** a la red de hospitales correcta según gravedad, y **seguimiento** de pacientes (expedientes, psicología, costos).
+Sistema web presentado por **WomenCiso y MenCiso Foundation** para la atención de personas con quemaduras en México — niños, niñas, adolescentes, adultos y adultos mayores. La app cubre el ciclo completo: **triage rápido** de la emergencia, **canalización** a la red de hospitales correcta según gravedad, y **acompañamiento integral** hasta la reinserción a la vida productiva (expedientes, psicología, financiamiento de cirugías y traslados, rehabilitación laboral y defensa legal).
 
 La plataforma está diseñada para reutilizarse por distintas fundaciones. WomenCiso y MenCiso Foundation aporta el respaldo de ciberseguridad y la difusión para su despliegue.
 

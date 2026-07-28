@@ -1,7 +1,7 @@
 {
   "name": "WomenCiso y MenCiso — Sistema de Atencion a Quemados",
   "short_name": "WomenCiso",
-  "description": "Triage rapido, canalizacion hospitalaria y seguimiento integral para ninos con quemaduras",
+  "description": "Triage rapido, canalizacion hospitalaria y acompanamiento integral para personas con quemaduras de todas las edades",
   "start_url": "/",
   "display": "browser",
   "background_color": "#1B2A4A",
